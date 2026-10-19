@@ -1,11 +1,13 @@
 import Link from "next/link";
 
-/** Wordmark. Drop a logo file at public/logo.svg (or .png) and set NEXT_PUBLIC_LOGO=/logo.svg to use it instead. */
-export function Brand({ sub = "Development Ltd. · Client portal" }: { sub?: string }) {
-  const logo = process.env.NEXT_PUBLIC_LOGO;
+/** TCB logo: charcoal artwork on light backgrounds, light artwork on dark. */
+export function Brand({ sub = "Client portal" }: { sub?: string }) {
   return (
     <Link href="/" className="brand" aria-label="TCB Development home">
-      {logo ? <img src={logo} alt="TCB Development" /> : "TCB"}
+      <picture>
+        <source srcSet="/logo-light.png" media="(prefers-color-scheme: dark)" />
+        <img src="/logo-dark.png" alt="TCB Development Integration" width={900} height={366} />
+      </picture>
       <small>{sub}</small>
     </Link>
   );

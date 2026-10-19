@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "TCB Client Portal", template: "%s · TCB Client Portal" },
   description: "Project portal for TCB Development clients.",
-  icons: { icon: "/icon.svg" },
+  icons: { icon: "/icon.png" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
