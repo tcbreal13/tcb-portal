@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { HashSession } from "@/components/HashSession";
 
 export const metadata: Metadata = {
   title: { default: "TCB Client Portal", template: "%s · TCB Client Portal" },
@@ -15,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Play:wght@700&display=swap" />
       </head>
-      <body>{children}</body>
+      <body><HashSession />{children}</body>
     </html>
   );
 }
