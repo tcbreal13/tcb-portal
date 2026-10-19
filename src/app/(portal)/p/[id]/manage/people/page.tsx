@@ -1,0 +1,48 @@
+import { notFound } from "next/navigation";
+import { requireBuilder } from "@/lib/builder";
+import { getJobRecord } from "@/lib/data";
+import { AdminForm, DeleteButton } from "@/components/AdminForm";
+import { inviteClient, removeMember } from "../actions";
+
+export const metadata = { title: "Clients & access" };
+
+export default async function People({ params }: { params: Promise<{ id: string }> }) {
+  const { supabase } = await requireBuilder();
+  const { id } = await params;
+  const r = await getJobRecord(id);
+  if (!r) notFound();
+  const { data: members } = await supabase.from("project_members").select("user_id, profiles(full_name)").eq("project_id", id);
+  const invite = inviteClient.bind(null, id);
+
+  return (
+    <>
+      <div><h1>Clients &amp; access</h1><p className="sub">Each person you invite gets an email with a link to set their password, and then sees only this job.</p></div>
+      <div className="panel">
+        <h2>Invite a client</h2>
+        <AdminForm action={invite} submit="Send invitation" reset>
+          <div className="grid2">
+            <div><label htmlFor="full_name" style={{ marginTop: 0 }}>Name</label><input id="full_name" name="full_name" type="text" placeholder="Dana Hartwell" /></div>
+            <div><label htmlFor="email" style={{ marginTop: 0 }}>Email</label><input id="email" name="email" type="email" required /></div>
+          </div>
+        </AdminForm>
+      </div>
+      <div className="panel">
+        <h2>Who has access</h2>
+        <div className="rows">
+          {(members ?? []).length === 0 && <p className="note" style={{ margin: 0 }}>No clients yet. Builders see every job automatically.</p>}
+          {(members ?? []).map((m) => {
+            const p = m.profiles as unknown as { full_name: string } | { full_name: string }[] | null;
+            const name = (Array.isArray(p) ? p[0]?.full_name : p?.full_name) || "Invited (hasn’t signed in yet)";
+            return (
+              <div className="row" key={m.user_id}>
+                <div className="grow"><div className="t">{name}</div></div>
+                <DeleteButton onDelete={removeMember.bind(null, id, m.user_id)} label="Remove access" />
+              </div>
+            );
+          })}
+        </div>
+        <p className="note">If someone didn&rsquo;t get their invitation, have them use &ldquo;Forgot password?&rdquo; on the sign-in page — it sends a fresh set-password link.</p>
+      </div>
+    </>
+  );
+}
