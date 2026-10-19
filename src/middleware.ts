@@ -1,15 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC = ["/login", "/auth", "/reset-password", "/set-password"];
+const PUBLIC = ["/login", "/auth", "/reset-password", "/set-password", "/api/health"];
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  const isPublic = PUBLIC.some((p) => path === p || path.startsWith(p + "/"));
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
+  if (!url || !key) {
+    // Misconfigured deployment: let public pages render so /api/health can explain; everything else goes to login.
+    if (isPublic) return response;
+    return NextResponse.redirect(new URL("/login?error=config", request.url));
+  }
+
+  try {
+    const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -20,28 +28,30 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
         },
       },
-    },
-  );
+    });
 
-  // Refreshes the session cookie if it expired. Do not remove.
-  const { data: { user } } = await supabase.auth.getUser();
+    // Refreshes the session cookie if it expired. Do not remove.
+    const { data: { user } } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC.some((p) => path === p || path.startsWith(p + "/"));
-
-  if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", path);
-    return NextResponse.redirect(url);
+    if (!user && !isPublic) {
+      const to = request.nextUrl.clone();
+      to.pathname = "/login";
+      to.search = "";
+      to.searchParams.set("next", path);
+      return NextResponse.redirect(to);
+    }
+    if (user && path === "/login") {
+      const to = request.nextUrl.clone();
+      to.pathname = "/";
+      to.search = "";
+      return NextResponse.redirect(to);
+    }
+    return response;
+  } catch (e) {
+    console.error("middleware error", e);
+    if (isPublic) return response;
+    return NextResponse.redirect(new URL("/login?error=middleware", request.url));
   }
-  if (user && path === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    url.search = "";
-    return NextResponse.redirect(url);
-  }
-  return response;
 }
 
 export const config = {
