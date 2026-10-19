@@ -196,6 +196,8 @@ export async function inviteClient(id: string, _p: R, f: FormData): Promise<R> {
   }
   if (full_name) await admin.from("profiles").update({ full_name }).eq("id", userId).eq("full_name", "");
   const { error } = await supabase.from("project_members").upsert({ project_id: id, user_id: userId });
+  const requestId = str(f, "request_id");
+  if (!error && requestId) { await supabase.from("access_requests").update({ status: "done" }).eq("id", requestId); revalidatePath("/"); }
   bust(id);
   return error ? { error: error.message } : { ok: existing ? `${email} now has access to this job.` : `Invitation sent to ${email}. They'll get an email with a link to set their password.` };
 }

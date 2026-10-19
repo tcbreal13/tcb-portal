@@ -6,9 +6,9 @@ import { inviteClient, removeMember } from "../actions";
 
 export const metadata = { title: "Clients & access" };
 
-export default async function People({ params }: { params: Promise<{ id: string }> }) {
+export default async function People({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ email?: string; name?: string; req?: string }> }) {
   const { supabase } = await requireBuilder();
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const r = await getJobRecord(id);
   if (!r) notFound();
   const { data: members } = await supabase.from("project_members").select("user_id, profiles(full_name)").eq("project_id", id);
@@ -20,9 +20,10 @@ export default async function People({ params }: { params: Promise<{ id: string 
       <div className="panel">
         <h2>Invite a client</h2>
         <AdminForm action={invite} submit="Send invitation" reset>
+          {sp.req && <input type="hidden" name="request_id" value={sp.req} />}
           <div className="grid2">
-            <div><label htmlFor="full_name" style={{ marginTop: 0 }}>Name</label><input id="full_name" name="full_name" type="text" placeholder="Dana Hartwell" /></div>
-            <div><label htmlFor="email" style={{ marginTop: 0 }}>Email</label><input id="email" name="email" type="email" required /></div>
+            <div><label htmlFor="full_name" style={{ marginTop: 0 }}>Name</label><input id="full_name" name="full_name" type="text" placeholder="Dana Hartwell" defaultValue={sp.name ?? ""} /></div>
+            <div><label htmlFor="email" style={{ marginTop: 0 }}>Email</label><input id="email" name="email" type="email" required defaultValue={sp.email ?? ""} /></div>
           </div>
         </AdminForm>
       </div>

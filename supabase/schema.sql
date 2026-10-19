@@ -297,3 +297,22 @@ drop policy if exists "storage: builder write" on storage.objects;
 create policy "storage: builder write" on storage.objects for all
   using (bucket_id in ('photos', 'documents') and is_builder())
   with check (bucket_id in ('photos', 'documents') and is_builder());
+
+-- ---------------------------------------------------------------
+-- Access requests from the sign-in page (also in 002_access_requests.sql)
+-- ---------------------------------------------------------------
+create table if not exists access_requests (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null,
+  email text not null,
+  project_hint text not null default '',
+  message text not null default '',
+  status text not null default 'new' check (status in ('new', 'done')),
+  created_at timestamptz not null default now()
+);
+create index if not exists access_requests_status on access_requests (status, created_at desc);
+alter table access_requests enable row level security;
+drop policy if exists "access_requests: anyone can submit" on access_requests;
+create policy "access_requests: anyone can submit" on access_requests for insert to anon, authenticated with check (true);
+drop policy if exists "access_requests: builder manage" on access_requests;
+create policy "access_requests: builder manage" on access_requests for all using (is_builder()) with check (is_builder());

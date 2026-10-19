@@ -24,6 +24,7 @@ export function LoginForm({ next }: { next: string }) {
         <button className="btn" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</button>
         <Link href="/reset-password" className="linkbtn">Forgot password?</Link>
       </div>
+      <p className="note" style={{ margin: 0 }}>New to the portal? <Link href="/request-access" className="linkbtn">Request access</Link></p>
     </form>
   );
 }

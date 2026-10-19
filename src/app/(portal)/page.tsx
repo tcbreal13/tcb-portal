@@ -2,12 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getViewer, listProjects } from "@/lib/data";
 import { fdate } from "@/lib/format";
+import { AccessRequests, type AccessRequest } from "./AccessRequests";
 
 export default async function Home() {
-  const { profile } = await getViewer();
+  const { profile, supabase } = await getViewer();
   const projects = await listProjects();
 
   if (profile.role === "client" && projects.length === 1) redirect(`/p/${projects[0].id}`);
+
+  let requests: AccessRequest[] = [];
+  if (profile.role === "builder") {
+    const { data } = await supabase.from("access_requests").select("id, full_name, email, project_hint, message, created_at").eq("status", "new").order("created_at", { ascending: false });
+    requests = data ?? [];
+  }
 
   return (
     <main style={{ marginTop: 22 }}>
@@ -15,6 +22,7 @@ export default async function Home() {
         <h1>{profile.role === "builder" ? "Projects" : "Your projects"}</h1>
         {profile.role === "builder" && <p className="sub">Open a job to see what the client sees, or to post logs, billing and change orders.</p>}
       </div>
+      {profile.role === "builder" && <AccessRequests requests={requests} projects={projects.map((p) => ({ id: p.id, name: p.name }))} />}
       {projects.length === 0 ? (
         <div className="panel">
           {profile.role === "builder"
