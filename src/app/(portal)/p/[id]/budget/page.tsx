@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getJobRecord, getViewer, approvedTotal, billedTotal, revisedContract } from "@/lib/data";
 import { usd, signed, fdate, sum } from "@/lib/format";
@@ -8,8 +9,9 @@ export const metadata = { title: "Budget & billing" };
 
 export default async function Budget({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [r, { supabase }] = await Promise.all([getJobRecord(id), getViewer()]);
+  const [r, { supabase, profile }] = await Promise.all([getJobRecord(id), getViewer()]);
   if (!r) notFound();
+  const isBuilder = profile.role === "builder";
   const docs = await signPayAppDocs(supabase, r.payApps);
   const tb = sum(r.budget, (b) => b.budget), tl = billedTotal(r), revised = revisedContract(r);
   return (
@@ -55,12 +57,12 @@ export default async function Budget({ params }: { params: Promise<{ id: string 
                     <td>Period ending {fdate(p.period_ending)}{p.waiver_note && <div className="d" style={{ fontSize: 12.5, color: "var(--muted)" }}>{p.waiver_note}</div>}</td>
                     <td className="r num">{usd(p.amount)}</td>
                     <td>{p.status === "paid" ? <Pill kind="good">Paid{p.status_date ? ` ${fdate(p.status_date, { month: "short", day: "numeric" })}` : ""}</Pill> : <Pill kind="warn">Due{p.status_date ? ` ${fdate(p.status_date, { month: "short", day: "numeric" })}` : ""}</Pill>}</td>
-                    <td>
-                      {links.length === 0 ? <span className="note" style={{ margin: 0 }}>Not uploaded yet</span> : (
-                        <div className="btns" style={{ gap: 6 }}>
-                          {links.map((l) => <a key={l.label} className="btn ghost sm" href={l.url} target="_blank" rel="noopener">{l.label} (PDF)</a>)}
-                        </div>
-                      )}
+                    <td style={{ paddingLeft: 14 }}>
+                      <div className="btns" style={{ gap: 6 }}>
+                        {links.map((l) => <a key={l.label} className="btn ghost sm" href={l.url} target="_blank" rel="noopener">{l.label} (PDF)</a>)}
+                        {links.length === 0 && !isBuilder && <span className="note" style={{ margin: 0 }}>Not uploaded yet</span>}
+                        {isBuilder && <Link href={`/p/${id}/manage/budget#pa-${p.number}`} className="btn sm">{links.length ? "Edit PDFs" : "Attach PDFs"}</Link>}
+                      </div>
                     </td>
                   </tr>
                 );

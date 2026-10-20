@@ -6,6 +6,7 @@ import { AdminForm, DeleteButton } from "@/components/AdminForm";
 import { saveBudgetLine, savePayApp, deleteRow } from "../actions";
 import { PAYAPP_DOCS } from "@/lib/types";
 import { signPayAppDocs } from "@/lib/payapp-docs";
+import { OpenHashDetails } from "@/components/OpenHashDetails";
 
 export const metadata = { title: "Budget & pay apps" };
 
@@ -20,6 +21,7 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
 
   return (
     <>
+      <OpenHashDetails />
       <div><h1>Budget &amp; pay apps</h1><p className="sub">Update the billed amount on each category when you issue a pay app; the client&rsquo;s totals follow.</p></div>
 
       <div className="stats">
@@ -68,8 +70,8 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
       <div className="panel">
         <h2>Pay applications</h2>
         {r.payApps.map((p) => (
-          <details className="panel" key={p.id} style={{ marginBottom: 8 }}>
-            <summary>#{p.number} · period ending {fdate(p.period_ending)} · {usd(p.amount)} · {p.status}</summary>
+          <details className="panel" key={p.id} id={`pa-${p.number}`} style={{ marginBottom: 8 }}>
+            <summary>#{p.number} · period ending {fdate(p.period_ending)} · {usd(p.amount)} · {p.status}{(docs.get(p.id)?.length ?? 0) > 0 && <span className="pill good" style={{ marginLeft: 8 }}>{docs.get(p.id)!.length} PDF{docs.get(p.id)!.length === 1 ? "" : "s"}</span>}</summary>
             <AdminForm action={savePA} submit="Save">
               <input type="hidden" name="pa_id" value={p.id} />
               <div className="grid2">
