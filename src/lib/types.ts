@@ -24,7 +24,7 @@ export type PayAppDocKey = (typeof PAYAPP_DOCS)[number][0];
 export interface ChangeOrder { id: string; code: string; title: string; amount: number; description: string; status: "pending" | "approved" | "declined"; sent_date: string; decided_date: string | null; signed_name: string | null }
 export interface SelectionOption { id: string; selection_id: string; name: string; price_delta: number; sort_order: number }
 export interface Selection { id: string; item: string; needed_by: string | null; chosen_option_id: string | null; chosen_at: string | null; signed_name: string | null; options: SelectionOption[] }
-export interface Doc { id: string; title: string; category: string; doc_date: string; storage_path: string }
+export interface Doc { id: string; title: string; category: string; doc_date: string; storage_path: string; uploaded_by: string | null }
 export interface Message { id: string; sender_id: string; body: string; created_at: string; sender_name: string }
 export interface Update { id: string; update_date: string; body: string }
 

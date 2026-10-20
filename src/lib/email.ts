@@ -60,3 +60,10 @@ export async function emailChangeOrderDecided(d: DecisionEmail & { code: string;
     layout(`Client ${verb} ${d.code}`, `${rows}<p>Signed by ${esc(d.signedName)} (${esc(d.clientEmail ?? "no email")}).</p>`, link)));
   await Promise.all(jobs);
 }
+
+/** Client shared files: heads-up to Tim only. */
+export async function emailClientUploaded(d: { clientEmail: string | null | undefined; clientName: string; projectId: string; projectName: string; titles: string[] }) {
+  const list = `<ul>${d.titles.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`;
+  await send([BUILDER_EMAIL], `[Portal] ${d.projectName}: ${d.clientName} uploaded ${d.titles.length} file${d.titles.length === 1 ? "" : "s"}`,
+    layout("New client upload", `<p>${esc(d.clientName)} (${esc(d.clientEmail ?? "no email")}) added to the Client uploads folder on ${esc(d.projectName)}:</p>${list}`, { label: "Open documents", href: `${SITE}/p/${d.projectId}/docs` }));
+}

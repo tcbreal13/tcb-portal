@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getJobRecord, getViewer } from "@/lib/data";
 import { fdate } from "@/lib/format";
-import { DOC_FOLDERS, OTHER_FOLDER, normalizeFolder } from "@/lib/doc-folders";
+import { DOC_FOLDERS, OTHER_FOLDER, CLIENT_FOLDER, normalizeFolder } from "@/lib/doc-folders";
+import { ClientUploadForm, RemoveOwnUpload } from "./ClientUpload";
 
 export const metadata = { title: "Documents" };
 
 export default async function Docs({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [r, { supabase, profile }] = await Promise.all([getJobRecord(id), getViewer()]);
+  const [r, { supabase, profile, user }] = await Promise.all([getJobRecord(id), getViewer()]);
   if (!r) notFound();
   const isBuilder = profile.role === "builder";
   let urls = new Map<string, string>();
@@ -30,17 +31,19 @@ export default async function Docs({ params }: { params: Promise<{ id: string }>
             <div className="row nt">
               <div className="grow"><h2 style={{ margin: 0 }}>{f.name}</h2>{f.blurb && <div className="d" style={{ fontSize: 13, color: "var(--muted)" }}>{f.blurb}</div>}</div>
               <span className="pill idle">{docs.length} {docs.length === 1 ? "file" : "files"}</span>
-              {isBuilder && <Link href={`/p/${id}/manage/docs?folder=${encodeURIComponent(f.name)}`} className="btn sm">Upload</Link>}
+              {isBuilder && f.name !== CLIENT_FOLDER && <Link href={`/p/${id}/manage/docs?folder=${encodeURIComponent(f.name)}`} className="btn sm">Upload</Link>}
             </div>
             <div className="rows">
-              {docs.length === 0 && <p className="note" style={{ margin: 0 }}>Nothing filed here yet.</p>}
+              {docs.length === 0 && <p className="note" style={{ margin: 0 }}>{f.name === CLIENT_FOLDER ? "Nothing shared yet." : "Nothing filed here yet."}</p>}
               {docs.map((d) => (
                 <div className="row" key={d.id}>
                   <div className="grow"><div className="t">{d.title}</div><div className="d">{fdate(d.doc_date)}</div></div>
                   {urls.get(d.storage_path) ? <a className="btn ghost sm" href={urls.get(d.storage_path)} target="_blank" rel="noopener">Open</a> : <span className="note">Unavailable</span>}
+                  {f.name === CLIENT_FOLDER && d.uploaded_by === user.id && <RemoveOwnUpload projectId={id} docId={d.id} />}
                 </div>
               ))}
             </div>
+            {f.name === CLIENT_FOLDER && !isBuilder && <ClientUploadForm projectId={id} />}
           </div>
         );
       })}
