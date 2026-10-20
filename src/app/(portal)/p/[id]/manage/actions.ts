@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireBuilder, num, str, dateOrNull, safeName } from "@/lib/builder";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayISO } from "@/lib/format";
+import { PAYAPP_DOCS } from "@/lib/types";
 
 type R = { error?: string; ok?: string } | null;
 const bust = (id: string) => revalidatePath(`/p/${id}`, "layout");
@@ -49,6 +50,11 @@ export async function deleteRow(id: string, table: "phases" | "lookahead_items" 
   if (table === "documents") {
     const { data } = await supabase.from("documents").select("storage_path").eq("id", rowId).maybeSingle();
     if (data?.storage_path) await supabase.storage.from("documents").remove([data.storage_path]);
+  }
+  if (table === "pay_apps") {
+    const { data } = await supabase.from("pay_apps").select("invoice_path, payapp_path, conditional_waiver_path, unconditional_waiver_path").eq("id", rowId).maybeSingle();
+    const paths = data ? Object.values(data).filter((p): p is string => !!p) : [];
+    if (paths.length) await supabase.storage.from("documents").remove(paths);
   }
   if (table === "daily_logs") {
     const { data } = await supabase.from("log_photos").select("storage_path").eq("log_id", rowId);
@@ -105,9 +111,26 @@ export async function savePayApp(id: string, _p: R, f: FormData): Promise<R> {
   const paId = str(f, "pa_id");
   const row = { project_id: id, number: Math.round(num(f, "number")), period_ending: dateOrNull(f, "period_ending"), amount: num(f, "amount"), status: str(f, "status") === "paid" ? "paid" : "due", status_date: dateOrNull(f, "status_date"), waiver_note: str(f, "waiver_note") };
   if (!row.number || !row.period_ending) return { error: "A pay app needs a number and a period-ending date." };
-  const { error } = await (paId ? supabase.from("pay_apps").update(row).eq("id", paId) : supabase.from("pay_apps").insert(row));
+
+  // Attached PDFs: invoice, G702/G703, conditional and unconditional waivers. Only replace a slot when a new file is chosen.
+  const docs: Record<string, string> = {};
+  const failures: string[] = [];
+  for (const [col, label, slug] of PAYAPP_DOCS) {
+    const file = f.get(`doc_${slug}`);
+    if (!(file instanceof File) || file.size === 0) continue;
+    if (file.size > 50 * 1024 * 1024) { failures.push(`${label} is over 50 MB`); continue; }
+    const path = `${id}/payapps/${row.number}/${slug}-${Date.now()}-${safeName(file.name)}`;
+    const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || "application/pdf" });
+    if (upErr) { failures.push(`${label}: ${upErr.message}`); continue; }
+    docs[col] = path;
+  }
+  for (const [col, , slug] of PAYAPP_DOCS) if (f.get(`remove_${slug}`) === "on") docs[col] = null as unknown as string;
+
+  const full = { ...row, ...docs };
+  const { error } = await (paId ? supabase.from("pay_apps").update(full).eq("id", paId) : supabase.from("pay_apps").insert(full));
   bust(id);
-  return error ? { error: error.message } : { ok: "Saved." };
+  if (error) return { error: error.message };
+  return failures.length ? { error: `Saved, but: ${failures.join("; ")}` } : { ok: Object.keys(docs).length ? "Saved with documents." : "Saved." };
 }
 
 /* ---------- Change orders ---------- */

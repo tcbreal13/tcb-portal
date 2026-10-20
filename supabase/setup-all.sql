@@ -323,3 +323,8 @@ create policy "access_requests: builder manage" on access_requests for all using
 insert into profiles (id, full_name, role)
 select id, 'Tim Hubar', 'builder' from auth.users where lower(email) = 'tim@tcbreal.com'
 on conflict (id) do update set role = 'builder', full_name = 'Tim Hubar';
+-- Attach documents to pay applications: invoice, G702/G703 pay app, conditional and unconditional waivers.
+alter table pay_apps add column if not exists invoice_path text;
+alter table pay_apps add column if not exists payapp_path text;
+alter table pay_apps add column if not exists conditional_waiver_path text;
+alter table pay_apps add column if not exists unconditional_waiver_path text;

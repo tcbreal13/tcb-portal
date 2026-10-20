@@ -316,3 +316,8 @@ drop policy if exists "access_requests: anyone can submit" on access_requests;
 create policy "access_requests: anyone can submit" on access_requests for insert to anon, authenticated with check (true);
 drop policy if exists "access_requests: builder manage" on access_requests;
 create policy "access_requests: builder manage" on access_requests for all using (is_builder()) with check (is_builder());
+-- Attach documents to pay applications: invoice, G702/G703 pay app, conditional and unconditional waivers.
+alter table pay_apps add column if not exists invoice_path text;
+alter table pay_apps add column if not exists payapp_path text;
+alter table pay_apps add column if not exists conditional_waiver_path text;
+alter table pay_apps add column if not exists unconditional_waiver_path text;

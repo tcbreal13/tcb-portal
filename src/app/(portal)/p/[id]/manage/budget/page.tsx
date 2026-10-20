@@ -4,14 +4,17 @@ import { getJobRecord } from "@/lib/data";
 import { usd, fdate, sum } from "@/lib/format";
 import { AdminForm, DeleteButton } from "@/components/AdminForm";
 import { saveBudgetLine, savePayApp, deleteRow } from "../actions";
+import { PAYAPP_DOCS } from "@/lib/types";
+import { signPayAppDocs } from "@/lib/payapp-docs";
 
 export const metadata = { title: "Budget & pay apps" };
 
 export default async function ManageBudget({ params }: { params: Promise<{ id: string }> }) {
-  await requireBuilder();
+  const { supabase } = await requireBuilder();
   const { id } = await params;
   const r = await getJobRecord(id);
   if (!r) notFound();
+  const docs = await signPayAppDocs(supabase, r.payApps);
   const saveLine = saveBudgetLine.bind(null, id), savePA = savePayApp.bind(null, id);
   const nextNo = (r.payApps.at(-1)?.number ?? 0) + 1;
 
@@ -75,7 +78,20 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
                 <div><label>Amount</label><input name="amount" type="text" inputMode="decimal" defaultValue={String(p.amount)} /></div>
                 <div><label>Status</label><select name="status" defaultValue={p.status}><option value="due">Due</option><option value="paid">Paid</option></select></div>
                 <div><label>Due / paid date</label><input name="status_date" type="date" defaultValue={p.status_date ?? ""} /></div>
-                <div><label>Lien waiver note</label><input name="waiver_note" type="text" defaultValue={p.waiver_note} placeholder="Conditional waivers attached" /></div>
+                <div><label>Note (shown to client)</label><input name="waiver_note" type="text" defaultValue={p.waiver_note} placeholder="INV 1517 — grading and retaining wall" /></div>
+              </div>
+              <div className="eyebrow" style={{ marginTop: 14 }}>Documents (PDF)</div>
+              <div className="grid2">
+                {PAYAPP_DOCS.map(([col, label, slug]) => {
+                  const link = (docs.get(p.id) ?? []).find((l) => l.label === label);
+                  return (
+                    <div key={slug}>
+                      <label>{label}{link && <> · <a href={link.url} target="_blank" rel="noopener" className="linkbtn">open current</a></>}</label>
+                      <input name={`doc_${slug}`} type="file" accept="application/pdf,image/*" />
+                      {p[col] && <span className="note" style={{ display: "block" }}><input type="checkbox" name={`remove_${slug}`} style={{ width: "auto", marginRight: 6 }} />Remove current file</span>}
+                    </div>
+                  );
+                })}
               </div>
             </AdminForm>
             <div style={{ marginTop: 8 }}><DeleteButton onDelete={deleteRow.bind(null, id, "pay_apps", p.id)} /></div>
@@ -96,9 +112,15 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
               <div><label>Amount</label><input name="amount" type="text" inputMode="decimal" placeholder="289000" /></div>
               <div><label>Status</label><select name="status" defaultValue="due"><option value="due">Due</option><option value="paid">Paid</option></select></div>
               <div><label>Due / paid date</label><input name="status_date" type="date" /></div>
-              <div><label>Lien waiver note</label><input name="waiver_note" type="text" placeholder="Conditional waivers attached" /></div>
+              <div><label>Note (shown to client)</label><input name="waiver_note" type="text" placeholder="INV 1520 — foundation and slab" /></div>
             </div>
-            <p className="note">Upload the pay app PDF and waivers under Documents so the client can open them.</p>
+            <div className="eyebrow" style={{ marginTop: 14 }}>Documents (PDF)</div>
+            <div className="grid2">
+              {PAYAPP_DOCS.map(([, label, slug]) => (
+                <div key={slug}><label>{label}</label><input name={`doc_${slug}`} type="file" accept="application/pdf,image/*" /></div>
+              ))}
+            </div>
+            <p className="note">Attach what you have now; you can add the unconditional waiver later once the payment clears.</p>
           </AdminForm>
         </details>
       </div>

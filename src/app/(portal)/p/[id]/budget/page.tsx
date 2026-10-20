@@ -1,14 +1,16 @@
 import { notFound } from "next/navigation";
-import { getJobRecord, approvedTotal, billedTotal, revisedContract } from "@/lib/data";
+import { getJobRecord, getViewer, approvedTotal, billedTotal, revisedContract } from "@/lib/data";
 import { usd, signed, fdate, sum } from "@/lib/format";
 import { Pill } from "@/components/Pill";
+import { signPayAppDocs } from "@/lib/payapp-docs";
 
 export const metadata = { title: "Budget & billing" };
 
 export default async function Budget({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = await getJobRecord(id);
+  const [r, { supabase }] = await Promise.all([getJobRecord(id), getViewer()]);
   if (!r) notFound();
+  const docs = await signPayAppDocs(supabase, r.payApps);
   const tb = sum(r.budget, (b) => b.budget), tl = billedTotal(r), revised = revisedContract(r);
   return (
     <>
@@ -43,15 +45,26 @@ export default async function Budget({ params }: { params: Promise<{ id: string 
         <h2>Pay applications</h2>
         {r.payApps.length === 0 ? <p className="note" style={{ margin: 0 }}>No pay applications yet.</p> : (
           <table>
-            <thead><tr><th>No.</th><th>Period</th><th className="r">Amount</th><th>Status</th><th>Lien waivers</th></tr></thead>
+            <thead><tr><th>No.</th><th>Period</th><th className="r">Amount</th><th>Status</th><th>Documents</th></tr></thead>
             <tbody>
-              {r.payApps.map((p) => (
-                <tr key={p.id}>
-                  <td className="num">#{p.number}</td><td>Period ending {fdate(p.period_ending)}</td><td className="r num">{usd(p.amount)}</td>
-                  <td>{p.status === "paid" ? <Pill kind="good">Paid{p.status_date ? ` ${fdate(p.status_date, { month: "short", day: "numeric" })}` : ""}</Pill> : <Pill kind="warn">Due{p.status_date ? ` ${fdate(p.status_date, { month: "short", day: "numeric" })}` : ""}</Pill>}</td>
-                  <td>{p.waiver_note || (p.status === "paid" ? "Unconditional waivers on file" : "Conditional waivers attached")}</td>
-                </tr>
-              ))}
+              {r.payApps.map((p) => {
+                const links = docs.get(p.id) ?? [];
+                return (
+                  <tr key={p.id}>
+                    <td className="num">#{p.number}</td>
+                    <td>Period ending {fdate(p.period_ending)}{p.waiver_note && <div className="d" style={{ fontSize: 12.5, color: "var(--muted)" }}>{p.waiver_note}</div>}</td>
+                    <td className="r num">{usd(p.amount)}</td>
+                    <td>{p.status === "paid" ? <Pill kind="good">Paid{p.status_date ? ` ${fdate(p.status_date, { month: "short", day: "numeric" })}` : ""}</Pill> : <Pill kind="warn">Due{p.status_date ? ` ${fdate(p.status_date, { month: "short", day: "numeric" })}` : ""}</Pill>}</td>
+                    <td>
+                      {links.length === 0 ? <span className="note" style={{ margin: 0 }}>Not uploaded yet</span> : (
+                        <div className="btns" style={{ gap: 6 }}>
+                          {links.map((l) => <a key={l.label} className="btn ghost sm" href={l.url} target="_blank" rel="noopener">{l.label} (PDF)</a>)}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr><td colSpan={2}>Total invoiced</td><td className="r num">{usd(sum(r.payApps, (p) => p.amount))}</td><td colSpan={2}>{usd(sum(r.payApps.filter((p) => p.status === "paid"), (p) => p.amount))} paid · {usd(sum(r.payApps.filter((p) => p.status === "due"), (p) => p.amount))} outstanding</td></tr>
