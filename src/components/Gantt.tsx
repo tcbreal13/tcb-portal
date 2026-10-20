@@ -66,7 +66,7 @@ export function Gantt({ groups, showHidden = false }: { groups: PhaseGroup[]; sh
         {months.map((m, i) => (
           <g key={m.label}>
             <rect x={x(m.start)} y={0} width={x(m.end) - x(m.start)} height={HEAD} fill={i % 2 ? "var(--sunk)" : "transparent"} />
-            <text x={x(m.start) + 6} y={14} fontSize={11.5} fontWeight={700} fill="var(--ink)">{m.label}</text>
+            {x(m.end) - x(m.start) > 54 && <text x={x(m.start) + 6} y={14} fontSize={11.5} fontWeight={700} fill="var(--ink)">{m.label}</text>}
           </g>
         ))}
         {/* week ticks */}
