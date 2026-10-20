@@ -122,7 +122,7 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
                 <div key={slug}><label>{label}</label><input name={`doc_${slug}`} type="file" accept="application/pdf,image/*" /></div>
               ))}
             </div>
-            <p className="note">Attach what you have now; you can add the unconditional waiver later once the payment clears.</p>
+            <p className="note">Pay app package = one PDF with the invoice, G702/G703 and conditional waiver. Add the unconditional waiver once the payment clears.</p>
           </AdminForm>
         </details>
       </div>

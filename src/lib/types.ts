@@ -17,9 +17,7 @@ export interface PayApp {
   invoice_path: string | null; payapp_path: string | null; conditional_waiver_path: string | null; unconditional_waiver_path: string | null;
 }
 export const PAYAPP_DOCS = [
-  ["invoice_path", "Invoice", "invoice"],
-  ["payapp_path", "Pay application (G702/G703)", "payapp"],
-  ["conditional_waiver_path", "Conditional waiver", "conditional"],
+  ["invoice_path", "Pay app package", "invoice"],          // invoice + G702/G703 + conditional waiver, one PDF
   ["unconditional_waiver_path", "Unconditional waiver", "unconditional"],
 ] as const;
 export type PayAppDocKey = (typeof PAYAPP_DOCS)[number][0];

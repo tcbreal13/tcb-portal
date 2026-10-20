@@ -107,7 +107,7 @@ export function recordForClaude(r: JobRecord) {
     lookAhead: r.lookahead.map((l) => ({ date: l.item_date, item: l.body })),
     dailyLogs: r.logs.slice(0, 20).map((l) => ({ date: l.log_date, weather: l.weather, crew: l.crew, note: l.note, photoCount: l.photos.length })),
     budget: r.budget.map((b) => ({ category: b.category, budget: Number(b.budget), billed: Number(b.billed) })),
-    payApplications: r.payApps.map((p) => ({ number: p.number, periodEnding: p.period_ending, amount: Number(p.amount), status: p.status, statusDate: p.status_date, note: p.waiver_note, documentsOnPortal: [p.invoice_path && "invoice", p.payapp_path && "pay application", p.conditional_waiver_path && "conditional waiver", p.unconditional_waiver_path && "unconditional waiver"].filter(Boolean) })),
+    payApplications: r.payApps.map((p) => ({ number: p.number, periodEnding: p.period_ending, amount: Number(p.amount), status: p.status, statusDate: p.status_date, note: p.waiver_note, documentsOnPortal: [p.invoice_path && "pay app package (invoice, G702/G703, conditional waiver)", p.unconditional_waiver_path && "unconditional waiver"].filter(Boolean) })),
     changeOrders: r.changeOrders.map((c) => ({ id: c.code, title: c.title, amount: Number(c.amount), status: c.status, sent: c.sent_date, decided: c.decided_date, description: c.description })),
     selections: r.selections.map((s) => ({
       item: s.item, neededBy: s.needed_by,
