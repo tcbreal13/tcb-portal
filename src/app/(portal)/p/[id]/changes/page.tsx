@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getJobRecord, approvedTotal, pendingCos } from "@/lib/data";
+import { getJobRecord, getViewer, approvedTotal, pendingCos } from "@/lib/data";
 import { signed, fshort, sum } from "@/lib/format";
 import { Pill } from "@/components/Pill";
 import { DecideButtons } from "./DecideButtons";
@@ -8,7 +8,7 @@ export const metadata = { title: "Change orders" };
 
 export default async function Changes({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = await getJobRecord(id);
+  const [r, { profile }] = await Promise.all([getJobRecord(id), getViewer()]);
   if (!r) notFound();
   const cos = [...r.changeOrders].reverse();
   return (
@@ -23,7 +23,8 @@ export default async function Changes({ params }: { params: Promise<{ id: string
             {c.status === "approved" ? <Pill kind="good">Approved {fshort(c.decided_date)}</Pill> : c.status === "declined" ? <Pill kind="crit">Declined {fshort(c.decided_date)}</Pill> : <Pill kind="warn">Needs your decision</Pill>}
           </div>
           <p style={{ margin: 0, maxWidth: "70ch", whiteSpace: "pre-wrap" }}>{c.description}</p>
-          {c.status === "pending" && <DecideButtons projectId={id} coId={c.id} code={c.code} amountLabel={signed(c.amount)} />}
+          {c.signed_name && c.status !== "pending" && <p className="note">Signed <b>{c.signed_name}</b> · {fshort(c.decided_date)}</p>}
+          {c.status === "pending" && <DecideButtons projectId={id} coId={c.id} code={c.code} title={c.title} amountLabel={signed(c.amount)} defaultName={profile.full_name} />}
         </div>
       ))}
     </>

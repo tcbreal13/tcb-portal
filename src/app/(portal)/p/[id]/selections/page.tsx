@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { getJobRecord } from "@/lib/data";
-import { signed, fshort } from "@/lib/format";
+import { getJobRecord, getViewer } from "@/lib/data";
+import { signed, fshort, ftime } from "@/lib/format";
 import { Pill } from "@/components/Pill";
 import { ChooseButton } from "./ChooseButton";
 
@@ -8,7 +8,7 @@ export const metadata = { title: "Selections" };
 
 export default async function Selections({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = await getJobRecord(id);
+  const [r, { profile }] = await Promise.all([getJobRecord(id), getViewer()]);
   if (!r) notFound();
   const open = r.selections.filter((s) => !s.chosen_option_id), done = r.selections.filter((s) => s.chosen_option_id);
   const list = [...open, ...done];
@@ -28,11 +28,13 @@ export default async function Selections({ params }: { params: Promise<{ id: str
               <div className={`opt${sel ? " sel" : ""}`} key={o.id}>
                 <div className="grow"><b>{o.name}</b></div>
                 <span className="num">{signed(o.price_delta)}</span>
-                {sel ? <Pill kind="good">Your choice</Pill> : !s.chosen_option_id ? <ChooseButton projectId={id} selectionId={s.id} optionId={o.id} name={o.name} /> : null}
+                {sel ? <Pill kind="good">Your choice</Pill> : !s.chosen_option_id ? <ChooseButton projectId={id} selectionId={s.id} optionId={o.id} name={o.name} item={s.item} priceLabel={signed(o.price_delta)} defaultName={profile.full_name} /> : null}
               </div>
             );
           })}
-          {s.chosen_option_id && <p className="note">To change this selection, send Tim a message — it may already be ordered.</p>}
+          {s.chosen_option_id && (
+            <p className="note">{s.signed_name ? <>Signed <b>{s.signed_name}</b>{s.chosen_at ? ` · ${ftime(s.chosen_at)}` : ""}. </> : null}To change this selection, send Tim a message — it may already be ordered.</p>
+          )}
         </div>
       ))}
     </>

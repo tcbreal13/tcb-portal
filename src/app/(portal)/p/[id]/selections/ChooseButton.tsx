@@ -2,18 +2,25 @@
 
 import { useState, useTransition } from "react";
 import { chooseSelection } from "../actions";
+import { SignatureBox } from "@/components/SignatureBox";
 
-export function ChooseButton({ projectId, selectionId, optionId, name }: { projectId: string; selectionId: string; optionId: string; name: string }) {
+export function ChooseButton({ projectId, selectionId, optionId, name, item, priceLabel, defaultName }: {
+  projectId: string; selectionId: string; optionId: string; name: string; item: string; priceLabel: string; defaultName?: string;
+}) {
   const [pending, start] = useTransition();
-  const [confirm, setConfirm] = useState(false);
-  if (confirm) {
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState<string>();
+  if (open) {
     return (
-      <span className="btns">
-        <span style={{ fontSize: 13 }}>Choose “{name}”?</span>
-        <button className="btn sm" disabled={pending} onClick={() => start(async () => { await chooseSelection(projectId, selectionId, optionId); setConfirm(false); })}>{pending ? "Saving…" : "Yes"}</button>
-        <button className="btn ghost sm" disabled={pending} onClick={() => setConfirm(false)}>No</button>
-      </span>
+      <div style={{ flexBasis: "100%" }}>
+        <SignatureBox
+          statement={`I approve "${name}" (${priceLabel}) for ${item}. I understand it may be ordered right away and that changing it later may cost time and money.`}
+          confirmLabel="Sign and approve" defaultName={defaultName} pending={pending}
+          onConfirm={(n) => start(async () => { const r = await chooseSelection(projectId, selectionId, optionId, n); if (r.error) setErr(r.error); else setOpen(false); })}
+          onCancel={() => setOpen(false)} />
+        {err && <p className="err">{err}</p>}
+      </div>
     );
   }
-  return <button className="btn ghost sm" onClick={() => setConfirm(true)}>Choose</button>;
+  return <button className="btn ghost sm" onClick={() => setOpen(true)}>Choose</button>;
 }

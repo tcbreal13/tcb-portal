@@ -43,7 +43,7 @@ export default async function ManageSelections({ params }: { params: Promise<{ i
             return (
               <div className="row" key={s.id}>
                 <div className="grow">
-                  <div className="t">{s.item} {chosen ? <Pill kind="good">Chose {chosen.name}</Pill> : <Pill kind="warn">{s.needed_by ? `Needed by ${fshort(s.needed_by)}` : "Open"}</Pill>}</div>
+                  <div className="t">{s.item} {chosen ? <Pill kind="good">Chose {chosen.name}{s.signed_name ? ` — signed ${s.signed_name}` : ""}</Pill> : <Pill kind="warn">{s.needed_by ? `Needed by ${fshort(s.needed_by)}` : "Open"}</Pill>}</div>
                   <div className="d">{s.options.map((o) => `${o.name} (${signed(o.price_delta)})`).join(" · ")}</div>
                 </div>
                 {chosen && <ReopenButton onReopen={reopenSelection.bind(null, id, s.id)} />}

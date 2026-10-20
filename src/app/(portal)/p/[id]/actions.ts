@@ -2,25 +2,50 @@
 
 import { revalidatePath } from "next/cache";
 import { getViewer } from "@/lib/data";
-import { todayISO } from "@/lib/format";
+import { todayISO, signed } from "@/lib/format";
+import { emailSelectionApproved, emailChangeOrderDecided } from "@/lib/email";
 
 /** Client (or builder) approves or declines a pending change order. RLS enforces pending → decided only. */
-export async function decideChangeOrder(projectId: string, coId: string, decision: "approved" | "declined") {
-  const { supabase, user } = await getViewer();
-  const { error } = await supabase.from("change_orders")
-    .update({ status: decision, decided_date: todayISO(), decided_by: user.id })
-    .eq("id", coId).eq("project_id", projectId).eq("status", "pending");
+function cleanName(s: string) { return s.trim().replace(/\s+/g, " ").slice(0, 120); }
+
+export async function decideChangeOrder(projectId: string, coId: string, decision: "approved" | "declined", signedName: string) {
+  const name = cleanName(signedName);
+  if (name.length < 3) return { error: "Type your full name to sign." };
+  const { supabase, user, profile } = await getViewer();
+  const { data: co, error } = await supabase.from("change_orders")
+    .update({ status: decision, decided_date: todayISO(), decided_by: user.id, signed_name: name })
+    .eq("id", coId).eq("project_id", projectId).eq("status", "pending")
+    .select("code, title, amount, projects(name)").maybeSingle();
   revalidatePath(`/p/${projectId}`, "layout");
-  return { error: error?.message };
+  if (error) return { error: error.message };
+  if (co) {
+    const pj = co.projects as unknown as { name: string } | { name: string }[] | null;
+    const projectName = (Array.isArray(pj) ? pj[0]?.name : pj?.name) ?? "your project";
+    await emailChangeOrderDecided({ clientEmail: user.email, clientName: profile.full_name, projectId, projectName, signedName: name, whenISO: new Date().toISOString(),
+      code: co.code, title: co.title, amountLabel: signed(co.amount), decision }).catch((e) => console.error(e));
+  }
+  return {};
 }
 
-export async function chooseSelection(projectId: string, selectionId: string, optionId: string) {
-  const { supabase } = await getViewer();
-  const { error } = await supabase.from("selections")
-    .update({ chosen_option_id: optionId, chosen_at: new Date().toISOString() })
-    .eq("id", selectionId).eq("project_id", projectId);
+export async function chooseSelection(projectId: string, selectionId: string, optionId: string, signedName: string) {
+  const name = cleanName(signedName);
+  if (name.length < 3) return { error: "Type your full name to sign." };
+  const { supabase, user, profile } = await getViewer();
+  const whenISO = new Date().toISOString();
+  const { data: sel, error } = await supabase.from("selections")
+    .update({ chosen_option_id: optionId, chosen_at: whenISO, signed_name: name, signed_by: user.id })
+    .eq("id", selectionId).eq("project_id", projectId)
+    .select("item, projects(name)").maybeSingle();
   revalidatePath(`/p/${projectId}`, "layout");
-  return { error: error?.message };
+  if (error) return { error: error.message };
+  if (sel) {
+    const { data: opt } = await supabase.from("selection_options").select("name, price_delta").eq("id", optionId).maybeSingle();
+    const pj = sel.projects as unknown as { name: string } | { name: string }[] | null;
+    const projectName = (Array.isArray(pj) ? pj[0]?.name : pj?.name) ?? "your project";
+    await emailSelectionApproved({ clientEmail: user.email, clientName: profile.full_name, projectId, projectName, signedName: name, whenISO,
+      item: sel.item, option: opt?.name ?? "", priceLabel: signed(opt?.price_delta ?? 0) }).catch((e) => console.error(e));
+  }
+  return {};
 }
 
 export async function postMessage(projectId: string, _prev: { error?: string } | null, formData: FormData) {
