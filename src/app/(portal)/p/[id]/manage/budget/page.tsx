@@ -43,7 +43,13 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
             <div style={{ marginTop: 8 }}><DeleteButton onDelete={deleteRow.bind(null, id, "budget_lines", b.id)} /></div>
           </details>
         ))}
-        <details className="panel" open={r.budget.length === 0}>
+        {r.budget.length > 0 && (
+          <div className="row" style={{ borderTop: "2px solid var(--ink)", marginTop: 4, paddingTop: 10, fontWeight: 700 }}>
+            <div className="grow">Total — {r.budget.length} categories</div>
+            <span className="num">{usd(sum(r.budget, (b) => b.billed))} billed of {usd(sum(r.budget, (b) => b.budget))} · {usd(sum(r.budget, (b) => b.budget) - sum(r.budget, (b) => b.billed))} remaining</span>
+          </div>
+        )}
+        <details className="panel" open={r.budget.length === 0} style={{ marginTop: 12 }}>
           <summary>Add a category</summary>
           <AdminForm action={saveLine} submit="Add" reset>
             <div className="grid2">
@@ -75,7 +81,13 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
             <div style={{ marginTop: 8 }}><DeleteButton onDelete={deleteRow.bind(null, id, "pay_apps", p.id)} /></div>
           </details>
         ))}
-        <details className="panel" open={r.payApps.length === 0}>
+        {r.payApps.length > 0 && (
+          <div className="row" style={{ borderTop: "2px solid var(--ink)", marginTop: 4, paddingTop: 10, fontWeight: 700 }}>
+            <div className="grow">Total — {r.payApps.length} pay apps</div>
+            <span className="num">{usd(sum(r.payApps, (p) => p.amount))} invoiced · {usd(sum(r.payApps.filter((p) => p.status === "paid"), (p) => p.amount))} paid · {usd(sum(r.payApps.filter((p) => p.status === "due"), (p) => p.amount))} outstanding</span>
+          </div>
+        )}
+        <details className="panel" open={r.payApps.length === 0} style={{ marginTop: 12 }}>
           <summary>Add pay application #{nextNo}</summary>
           <AdminForm action={savePA} submit="Add" reset>
             <div className="grid2">
