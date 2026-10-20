@@ -23,6 +23,7 @@ export default async function ProjectLayout({ children, params }: { children: Re
     { href: `${base}/manage`, label: "Needs attention" },
     { href: `${base}/manage/updates`, label: "Weekly update" },
     { href: `${base}/manage/logs`, label: "Post a daily log" },
+    { href: `${base}/manage/schedule`, label: "Schedule" },
     { href: `${base}/manage/budget`, label: "Budget & pay apps" },
     { href: `${base}/manage/changes`, label: "Change orders" },
     { href: `${base}/manage/selections`, label: "Selections" },

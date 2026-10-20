@@ -134,3 +134,6 @@ details.panel[open] summary{margin-bottom:10px}
   .brand img{height:40px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.legend{display:inline-flex;align-items:center;gap:6px 8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:10px;margin-left:8px}
+.legend i.dia{width:9px;height:9px;background:var(--ink);transform:rotate(45deg);margin-right:3px}

@@ -8,6 +8,12 @@ export interface Project {
   contract_amount: number; target_completion: string | null; archived: boolean;
 }
 export interface Phase { id: string; project_id: string; name: string; start_date: string; end_date: string; percent_complete: number; sort_order: number }
+export type TaskStatus = "planned" | "in_progress" | "complete";
+export interface ScheduleTask {
+  id: string; project_id: string; phase_id: string | null; title: string; start_date: string; end_date: string; duration_days: number;
+  assigned_to: string; cost_code: string; predecessors: string; predecessor_type: string; lag_days: string;
+  show_client: boolean; status: TaskStatus; notes: string; sort_order: number;
+}
 export interface LookaheadItem { id: string; item_date: string; body: string }
 export interface DailyLog { id: string; log_date: string; weather: string; crew: string; note: string; photos: LogPhoto[] }
 export interface LogPhoto { id: string; log_id: string; storage_path: string; caption: string; url?: string }
@@ -31,6 +37,7 @@ export interface Update { id: string; update_date: string; body: string }
 export interface JobRecord {
   project: Project;
   phases: Phase[];
+  tasks: ScheduleTask[];
   lookahead: LookaheadItem[];
   logs: DailyLog[];
   budget: BudgetLine[];

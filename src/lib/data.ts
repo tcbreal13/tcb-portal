@@ -2,7 +2,7 @@ import { cache } from "react";
 import { normalizeFolder } from "@/lib/doc-folders";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { JobRecord, Profile, Project, Selection, DailyLog, Message } from "@/lib/types";
+import type { JobRecord, Profile, Project, Selection, DailyLog, Message, ScheduleTask } from "@/lib/types";
 
 /** Signed-in user plus profile. Redirects to /login when signed out. */
 export const getViewer = cache(async () => {
@@ -25,8 +25,9 @@ export const getJobRecord = cache(async (projectId: string): Promise<JobRecord |
   const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
   if (!project) return null;
 
-  const [phases, lookahead, logs, photos, budget, payApps, changeOrders, selections, options, docs, messages, updates, members] = await Promise.all([
+  const [phases, tasks, lookahead, logs, photos, budget, payApps, changeOrders, selections, options, docs, messages, updates, members] = await Promise.all([
     supabase.from("phases").select("*").eq("project_id", projectId).order("sort_order").order("start_date"),
+    supabase.from("schedule_tasks").select("*").eq("project_id", projectId).order("sort_order").order("start_date"),
     supabase.from("lookahead_items").select("*").eq("project_id", projectId).order("item_date"),
     supabase.from("daily_logs").select("*").eq("project_id", projectId).order("log_date", { ascending: false }).limit(60),
     supabase.from("log_photos").select("*").eq("project_id", projectId).order("created_at"),
@@ -67,6 +68,7 @@ export const getJobRecord = cache(async (projectId: string): Promise<JobRecord |
   return {
     project: project as Project,
     phases: phases.data ?? [],
+    tasks: (tasks.data ?? []) as ScheduleTask[],
     lookahead: lookahead.data ?? [],
     logs: logsWithPhotos,
     budget: budget.data ?? [],
@@ -105,6 +107,7 @@ export function recordForClaude(r: JobRecord) {
     billedToDate: billedTotal(r),
     remainingToBill: revisedContract(r) - billedTotal(r),
     phases: r.phases.map((p) => ({ phase: p.name, start: p.start_date, finish: p.end_date, percentComplete: p.percent_complete })),
+    scheduleTasks: r.tasks.filter((t) => t.show_client).map((t) => ({ phase: r.phases.find((p) => p.id === t.phase_id)?.name ?? "", task: t.title, start: t.start_date, finish: t.end_date, workDays: t.duration_days, who: t.assigned_to, status: t.status, milestone: t.duration_days === 0, note: t.notes })),
     lookAhead: r.lookahead.map((l) => ({ date: l.item_date, item: l.body })),
     dailyLogs: r.logs.slice(0, 20).map((l) => ({ date: l.log_date, weather: l.weather, crew: l.crew, note: l.note, photoCount: l.photos.length })),
     budget: r.budget.map((b) => ({ category: b.category, budget: Number(b.budget), billed: Number(b.billed) })),

@@ -245,3 +245,103 @@ export async function resendInvite(email: string): Promise<R> {
     return error ? { error: error.message } : { ok: `Set-password link sent to ${email}.` };
   } catch { return { error: "Needs SUPABASE_SERVICE_ROLE_KEY." }; }
 }
+
+/* ---------- Detailed schedule (tasks under phases) ---------- */
+import { tasksFromCsv, workDays, percentFromTasks } from "@/lib/schedule";
+import type { TaskStatus } from "@/lib/types";
+
+const TASK_STATUSES: TaskStatus[] = ["planned", "in_progress", "complete"];
+
+/** Keep each phase's dates and % in step with its tasks, so the overview and the phase bars stay honest. */
+async function syncPhases(supabase: Awaited<ReturnType<typeof requireBuilder>>["supabase"], projectId: string) {
+  const [{ data: phases }, { data: tasks }] = await Promise.all([
+    supabase.from("phases").select("id").eq("project_id", projectId),
+    supabase.from("schedule_tasks").select("phase_id, start_date, end_date, duration_days, status").eq("project_id", projectId),
+  ]);
+  for (const ph of phases ?? []) {
+    const ts = (tasks ?? []).filter((t) => t.phase_id === ph.id);
+    if (!ts.length) continue;
+    const start = ts.reduce((m, t) => (t.start_date < m ? t.start_date : m), ts[0].start_date);
+    const end = ts.reduce((m, t) => (t.end_date > m ? t.end_date : m), ts[0].end_date);
+    const pct = percentFromTasks(ts) ?? 0;
+    await supabase.from("phases").update({ start_date: start, end_date: end, percent_complete: pct }).eq("id", ph.id);
+  }
+}
+
+export async function saveTask(id: string, _p: R, f: FormData): Promise<R> {
+  const { supabase } = await requireBuilder();
+  const taskId = str(f, "task_id");
+  const start = dateOrNull(f, "start_date"); let end = dateOrNull(f, "end_date");
+  const title = str(f, "title");
+  if (!title || !start) return { error: "A task needs a title and a start date." };
+  if (!end || end < start) end = start;
+  const durRaw = str(f, "duration_days");
+  const milestone = f.get("milestone") === "on";
+  const duration = milestone ? 0 : durRaw === "" ? workDays(start, end) : Math.max(1, Math.round(num(f, "duration_days")));
+  const statusRaw = str(f, "status") as TaskStatus;
+  const row = {
+    project_id: id, phase_id: str(f, "phase_id") || null, title, start_date: start, end_date: end, duration_days: duration,
+    assigned_to: str(f, "assigned_to"), cost_code: str(f, "cost_code"), predecessors: str(f, "predecessors"), predecessor_type: str(f, "predecessor_type"), lag_days: str(f, "lag_days"),
+    show_client: f.get("show_client") === "on", status: TASK_STATUSES.includes(statusRaw) ? statusRaw : "planned", notes: str(f, "notes"),
+    sort_order: str(f, "sort_order") === "" ? Math.round(new Date(start).getTime() / 864e5) : Math.round(num(f, "sort_order")),
+  };
+  const q = taskId ? supabase.from("schedule_tasks").update(row).eq("id", taskId) : supabase.from("schedule_tasks").insert(row);
+  const { error } = await q;
+  if (error) return { error: error.message };
+  await syncPhases(supabase, id);
+  bust(id);
+  return { ok: "Saved." };
+}
+
+export async function setTaskStatus(id: string, taskId: string, status: TaskStatus) {
+  const { supabase } = await requireBuilder();
+  if (!TASK_STATUSES.includes(status)) return { error: "Bad status." };
+  const { error } = await supabase.from("schedule_tasks").update({ status }).eq("id", taskId).eq("project_id", id);
+  if (error) return { error: error.message };
+  await syncPhases(supabase, id);
+  bust(id);
+  return {};
+}
+
+export async function deleteTask(id: string, taskId: string) {
+  const { supabase } = await requireBuilder();
+  await supabase.from("schedule_tasks").delete().eq("id", taskId).eq("project_id", id);
+  await syncPhases(supabase, id);
+  bust(id);
+  return {};
+}
+
+/** Import a Buildertrend "Schedule Import" CSV (or our own export). Phases are created by name when missing. */
+export async function importSchedule(id: string, _p: R, f: FormData): Promise<R> {
+  const { supabase } = await requireBuilder();
+  const file = f.get("file");
+  if (!(file instanceof File) || !file.size) return { error: "Choose a CSV file." };
+  const { tasks, errors } = tasksFromCsv(await file.text());
+  if (!tasks.length) return { error: errors[0] ?? "No tasks found in that file." };
+  const replace = f.get("replace") === "on";
+  if (replace) await supabase.from("schedule_tasks").delete().eq("project_id", id);
+
+  const { data: existing } = await supabase.from("phases").select("id, name, sort_order").eq("project_id", id);
+  const phases = new Map((existing ?? []).map((p) => [p.name.trim().toLowerCase(), p.id]));
+  let nextOrder = (existing ?? []).reduce((m, p) => Math.max(m, p.sort_order), 0);
+  const phaseIdFor = async (raw: string) => {
+    const name = raw.replace(/^\s*\d+\s*[-–.]\s*/, "").trim();
+    if (!name) return null;
+    const key = name.toLowerCase();
+    if (phases.has(key)) return phases.get(key)!;
+    const { data } = await supabase.from("phases").insert({ project_id: id, name, start_date: "2000-01-01", end_date: "2000-01-01", percent_complete: 0, sort_order: ++nextOrder }).select("id").single();
+    if (data) phases.set(key, data.id);
+    return data?.id ?? null;
+  };
+  const rows = [];
+  let n = 0;
+  for (const t of tasks) {
+    const phase_id = await phaseIdFor(t.phase);
+    rows.push({ project_id: id, phase_id, title: t.title, start_date: t.start_date, end_date: t.end_date, duration_days: t.duration_days, assigned_to: t.assigned_to, cost_code: t.cost_code, predecessors: t.predecessors, predecessor_type: t.predecessor_type, lag_days: t.lag_days, show_client: t.show_client, status: t.status, notes: t.notes, sort_order: ++n });
+  }
+  const { error } = await supabase.from("schedule_tasks").insert(rows);
+  if (error) return { error: error.message };
+  await syncPhases(supabase, id);
+  bust(id);
+  return { ok: `${rows.length} tasks imported${errors.length ? `; skipped ${errors.length}: ${errors.slice(0, 3).join(" ")}` : "."}` };
+}

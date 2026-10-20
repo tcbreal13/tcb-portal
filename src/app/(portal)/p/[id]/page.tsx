@@ -15,6 +15,8 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
   const u = r.updates[0];
   const today = new Date().toISOString().slice(0, 10);
   const ahead = r.lookahead.filter((l) => l.item_date >= today).slice(0, 6);
+  // No hand-written look-ahead? Show the next scheduled tasks instead.
+  const nextTasks = ahead.length ? [] : r.tasks.filter((t) => t.show_client && t.status !== "complete" && t.end_date >= today).sort((a, b) => a.start_date.localeCompare(b.start_date)).slice(0, 6);
 
   return (
     <>
@@ -68,7 +70,11 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
               {ahead.map((l) => (
                 <div className="row" key={l.id}><span className="num" style={{ width: 96 }}>{fweekday(l.item_date)}</span><div className="grow">{l.body}</div></div>
               ))}
-              {ahead.length === 0 && <p className="note" style={{ margin: 0 }}>The look-ahead will appear here as it&rsquo;s posted.</p>}
+              {nextTasks.map((t) => (
+                <div className="row" key={t.id}><span className="num" style={{ width: 96 }}>{fweekday(t.start_date < today ? today : t.start_date)}</span><div className="grow">{t.title}{t.status === "in_progress" && <span className="pill info" style={{ marginLeft: 8 }}>Under way</span>}</div></div>
+              ))}
+              {ahead.length + nextTasks.length === 0 && <p className="note" style={{ margin: 0 }}>The look-ahead will appear here as it&rsquo;s posted.</p>}
+              {nextTasks.length > 0 && <p className="note" style={{ margin: "8px 0 0" }}><Link href={`${base}/schedule`}>Full schedule and Gantt chart →</Link></p>}
             </div>
           </div>
         </div>

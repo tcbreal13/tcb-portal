@@ -38,6 +38,7 @@ export default async function Settings({ params }: { params: Promise<{ id: strin
 
       <div className="panel">
         <h2>Schedule phases</h2>
+        <p className="sub" style={{ marginBottom: 10 }}>Tasks under each phase live on the <a href={`/p/${id}/manage/schedule`}>Schedule</a> page; phase dates and % follow those tasks when there are any.</p>
         {r.phases.map((ph) => (
           <details className="panel" key={ph.id} style={{ marginBottom: 8 }}>
             <summary>{ph.name} <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— {fdate(ph.start_date)} to {fdate(ph.end_date)}, {ph.percent_complete}%</span></summary>
