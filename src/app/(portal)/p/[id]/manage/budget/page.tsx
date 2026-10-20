@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireBuilder } from "@/lib/builder";
 import { getJobRecord } from "@/lib/data";
-import { usd, fdate } from "@/lib/format";
+import { usd, fdate, sum } from "@/lib/format";
 import { AdminForm, DeleteButton } from "@/components/AdminForm";
 import { saveBudgetLine, savePayApp, deleteRow } from "../actions";
 
@@ -18,6 +18,13 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
   return (
     <>
       <div><h1>Budget &amp; pay apps</h1><p className="sub">Update the billed amount on each category when you issue a pay app; the client&rsquo;s totals follow.</p></div>
+
+      <div className="stats">
+        <div className="stat"><span>Budget total ({r.budget.length} lines)</span><b>{usd(sum(r.budget, (b) => b.budget))}</b></div>
+        <div className="stat"><span>Billed to date</span><b>{usd(sum(r.budget, (b) => b.billed))}</b><span>{sum(r.budget, (b) => b.budget) > 0 ? Math.round((sum(r.budget, (b) => b.billed) / sum(r.budget, (b) => b.budget)) * 100) : 0}% of budget</span></div>
+        <div className="stat"><span>Remaining</span><b>{usd(sum(r.budget, (b) => b.budget) - sum(r.budget, (b) => b.billed))}</b></div>
+        <div className="stat"><span>Pay apps issued</span><b>{usd(sum(r.payApps, (p) => p.amount))}</b><span>{r.payApps.filter((p) => p.status === "due").length} open · {usd(sum(r.payApps.filter((p) => p.status === "due"), (p) => p.amount))} outstanding</span></div>
+      </div>
 
       <div className="panel">
         <h2>Budget by category</h2>

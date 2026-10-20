@@ -53,6 +53,9 @@ export default async function Budget({ params }: { params: Promise<{ id: string 
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr><td colSpan={2}>Total invoiced</td><td className="r num">{usd(sum(r.payApps, (p) => p.amount))}</td><td colSpan={2}>{usd(sum(r.payApps.filter((p) => p.status === "paid"), (p) => p.amount))} paid · {usd(sum(r.payApps.filter((p) => p.status === "due"), (p) => p.amount))} outstanding</td></tr>
+            </tfoot>
           </table>
         )}
       </div>
