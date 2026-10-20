@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { normalizeFolder } from "@/lib/doc-folders";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { JobRecord, Profile, Project, Selection, DailyLog, Message } from "@/lib/types";
@@ -114,7 +115,7 @@ export function recordForClaude(r: JobRecord) {
       chosen: s.options.find((o) => o.id === s.chosen_option_id)?.name ?? null,
       options: s.options.map((o) => ({ name: o.name, priceVsAllowance: Number(o.price_delta) })),
     })),
-    documents: r.docs.map((d) => ({ title: d.title, category: d.category, date: d.doc_date })),
+    documents: r.docs.map((d) => ({ title: d.title, folder: normalizeFolder(d.category), date: d.doc_date })),
     latestUpdates: r.updates.slice(0, 3).map((u) => ({ date: u.update_date, text: u.body })),
   };
 }

@@ -6,6 +6,7 @@ import { requireBuilder, num, str, dateOrNull, safeName } from "@/lib/builder";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayISO } from "@/lib/format";
 import { PAYAPP_DOCS } from "@/lib/types";
+import { normalizeFolder, OTHER_FOLDER } from "@/lib/doc-folders";
 
 type R = { error?: string; ok?: string } | null;
 const bust = (id: string) => revalidatePath(`/p/${id}`, "layout");
@@ -174,16 +175,22 @@ export async function reopenSelection(id: string, selId: string) {
 /* ---------- Documents ---------- */
 export async function uploadDocument(id: string, _p: R, f: FormData): Promise<R> {
   const { supabase } = await requireBuilder();
-  const file = f.get("file");
+  const files = f.getAll("file").filter((x): x is File => x instanceof File && x.size > 0);
   const title = str(f, "title");
-  if (!(file instanceof File) || file.size === 0) return { error: "Choose a file." };
-  if (file.size > 50 * 1024 * 1024) return { error: "Files must be under 50 MB." };
-  const path = `${id}/${Date.now()}-${safeName(file.name)}`;
-  const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || "application/octet-stream" });
-  if (upErr) return { error: upErr.message };
-  const { error } = await supabase.from("documents").insert({ project_id: id, title: title || file.name, category: str(f, "category") || "Other", doc_date: dateOrNull(f, "doc_date") ?? todayISO(), storage_path: path });
+  const category = normalizeFolder(str(f, "category") || OTHER_FOLDER);
+  if (!files.length) return { error: "Choose at least one file." };
+  const failures: string[] = []; let done = 0;
+  for (const file of files) {
+    if (file.size > 50 * 1024 * 1024) { failures.push(`${file.name} (over 50 MB)`); continue; }
+    const path = `${id}/${Date.now()}-${safeName(file.name)}`;
+    const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || "application/octet-stream" });
+    if (upErr) { failures.push(`${file.name} (${upErr.message})`); continue; }
+    const docTitle = files.length === 1 && title ? title : file.name.replace(/\.[^.]+$/, "");
+    const { error } = await supabase.from("documents").insert({ project_id: id, title: docTitle, category, doc_date: dateOrNull(f, "doc_date") ?? todayISO(), storage_path: path });
+    if (error) failures.push(`${file.name} (${error.message})`); else done++;
+  }
   bust(id);
-  return error ? { error: error.message } : { ok: "Uploaded." };
+  return failures.length ? { error: `${done} uploaded; failed: ${failures.join(", ")}` } : { ok: `${done} file${done === 1 ? "" : "s"} filed under ${category}.` };
 }
 
 /* ---------- Updates ---------- */
