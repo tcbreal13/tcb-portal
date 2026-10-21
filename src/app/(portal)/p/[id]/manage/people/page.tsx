@@ -20,7 +20,7 @@ export default async function People({ params, searchParams }: { params: Promise
     <>
       <div><h1>Clients &amp; access</h1><p className="sub">Each person you invite gets an email with a link to set their password, and then sees only this job — and only the sections you tick.</p></div>
       <div className="panel">
-        <h2>Invite a client</h2>
+        <h2>Invite someone</h2>
         <AdminForm action={invite} submit="Send invitation" reset>
           {sp.req && <input type="hidden" name="request_id" value={sp.req} />}
           <div className="grid2">
