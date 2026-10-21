@@ -1,6 +1,7 @@
 /** Client-facing sections that can be switched on/off per client. Messages are always on. */
 export const SECTIONS = [
   { key: "overview", label: "Overview", path: "" },
+  { key: "predev", label: "Pre-development", path: "/predev" },
   { key: "schedule", label: "Schedule", path: "/schedule" },
   { key: "logs", label: "Daily logs & photos", path: "/logs" },
   { key: "budget", label: "Budget & billing", path: "/budget" },

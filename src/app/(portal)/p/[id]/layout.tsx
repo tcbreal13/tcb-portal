@@ -14,6 +14,7 @@ export default async function ProjectLayout({ children, params }: { children: Re
   const can = (k: string) => record.access.includes(k);
   const client: NavItem[] = [
     can("overview") && { href: base, label: "Overview" },
+    can("predev") && (record.project.project_types ?? []).includes("Pre-Development") && { href: `${base}/predev`, label: "Pre-development" },
     can("schedule") && { href: `${base}/schedule`, label: "Schedule" },
     can("logs") && { href: `${base}/logs`, label: "Daily logs & photos" },
     can("budget") && { href: `${base}/budget`, label: "Budget & billing" },
