@@ -7,12 +7,15 @@ import { emailSelectionApproved, emailChangeOrderDecided, emailClientUploaded } 
 import { CLIENT_FOLDER } from "@/lib/doc-folders";
 
 /** Client (or builder) approves or declines a pending change order. RLS enforces pending → decided only. */
+const PREVIEW: { error?: string; ok?: string } = { error: "You're previewing — nothing is saved. Exit preview to make changes." };
+
 function cleanName(s: string) { return s.trim().replace(/\s+/g, " ").slice(0, 120); }
 
 export async function decideChangeOrder(projectId: string, coId: string, decision: "approved" | "declined", signedName: string) {
   const name = cleanName(signedName);
   if (name.length < 3) return { error: "Type your full name to sign." };
-  const { supabase, user, profile } = await getViewer();
+  const { supabase, user, profile, viewAs } = await getViewer();
+  if (viewAs) return PREVIEW;
   const { data: co, error } = await supabase.from("change_orders")
     .update({ status: decision, decided_date: todayISO(), decided_by: user.id, signed_name: name })
     .eq("id", coId).eq("project_id", projectId).eq("status", "pending")
@@ -31,7 +34,8 @@ export async function decideChangeOrder(projectId: string, coId: string, decisio
 export async function chooseSelection(projectId: string, selectionId: string, optionId: string, signedName: string) {
   const name = cleanName(signedName);
   if (name.length < 3) return { error: "Type your full name to sign." };
-  const { supabase, user, profile } = await getViewer();
+  const { supabase, user, profile, viewAs } = await getViewer();
+  if (viewAs) return PREVIEW;
   const whenISO = new Date().toISOString();
   const { data: sel, error } = await supabase.from("selections")
     .update({ chosen_option_id: optionId, chosen_at: whenISO, signed_name: name, signed_by: user.id })
@@ -50,10 +54,11 @@ export async function chooseSelection(projectId: string, selectionId: string, op
 }
 
 /** Client uploads into the "Client uploads" folder of their own job. */
-export async function clientUpload(projectId: string, _prev: { error?: string; ok?: string } | null, formData: FormData) {
+export async function clientUpload(projectId: string, _prev: { error?: string; ok?: string } | null, formData: FormData): Promise<{ error?: string; ok?: string }> {
   const files = formData.getAll("file").filter((x): x is File => x instanceof File && x.size > 0);
   if (!files.length) return { error: "Choose at least one file." };
-  const { supabase, user, profile } = await getViewer();
+  const { supabase, user, profile, viewAs } = await getViewer();
+  if (viewAs) return PREVIEW;
   const failures: string[] = []; const titles: string[] = [];
   for (const file of files) {
     if (file.size > 50 * 1024 * 1024) { failures.push(`${file.name} (over 50 MB)`); continue; }
@@ -73,7 +78,8 @@ export async function clientUpload(projectId: string, _prev: { error?: string; o
 }
 
 export async function removeOwnUpload(projectId: string, docId: string) {
-  const { supabase, user } = await getViewer();
+  const { supabase, user, viewAs } = await getViewer();
+  if (viewAs) return PREVIEW;
   const { data } = await supabase.from("documents").select("storage_path, uploaded_by").eq("id", docId).eq("project_id", projectId).maybeSingle();
   if (!data || data.uploaded_by !== user.id) return { error: "You can only remove files you uploaded." };
   await supabase.storage.from("documents").remove([data.storage_path]);
@@ -85,7 +91,8 @@ export async function removeOwnUpload(projectId: string, docId: string) {
 export async function postMessage(projectId: string, _prev: { error?: string } | null, formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return { error: "Write a message first." };
-  const { supabase, user } = await getViewer();
+  const { supabase, user, viewAs } = await getViewer();
+  if (viewAs) return PREVIEW;
   const { error } = await supabase.from("messages").insert({ project_id: projectId, sender_id: user.id, body });
   revalidatePath(`/p/${projectId}/messages`);
   return { error: error?.message };

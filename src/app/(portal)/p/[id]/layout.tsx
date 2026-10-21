@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
-import { canSign } from "@/lib/access";
+import { canSign, firstAllowedPath, TIERS, type Tier } from "@/lib/access";
+import { startViewAs } from "../../view-as-actions";
 import { SideNav, type NavItem } from "@/components/SideNav";
 import { getJobRecord, getViewer, openSelections, pendingCos } from "@/lib/data";
 
 export default async function ProjectLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [{ profile }, record] = await Promise.all([getViewer(), getJobRecord(id)]);
+  const [{ profile, viewAs }, record] = await Promise.all([getViewer(), getJobRecord(id)]);
   if (!record) notFound();
   const base = `/p/${id}`;
 
@@ -36,7 +37,19 @@ export default async function ProjectLayout({ children, params }: { children: Re
 
   return (
     <div className="shell">
-      <SideNav base={base} client={client} builder={builder} />
+      <div>
+        <SideNav base={base} client={client} builder={builder} />
+        {profile.role === "builder" && !viewAs && (
+          <div className="viewas">
+            <div className="grp">View as</div>
+            {(Object.keys(TIERS) as Tier[]).map((t) => (
+              <form key={t} action={startViewAs.bind(null, t, firstAllowedPath(base, TIERS[t].sections))}>
+                <button className="viewas-btn">{TIERS[t].label}</button>
+              </form>
+            ))}
+          </div>
+        )}
+      </div>
       <main>{children}</main>
     </div>
   );

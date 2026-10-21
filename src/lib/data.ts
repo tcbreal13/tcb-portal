@@ -1,6 +1,10 @@
 import { cache } from "react";
 import { normalizeFolder } from "@/lib/doc-folders";
-import { ALL_SECTIONS, firstAllowedPath, type SectionKey } from "@/lib/access";
+import { ALL_SECTIONS, TIERS, firstAllowedPath, isTier, type SectionKey, type Tier } from "@/lib/access";
+import { cookies } from "next/headers";
+
+/** Cookie Tim sets with "View as": the portal then renders as that role would see it. Builders only. */
+export const VIEW_AS_COOKIE = "tcb_view_as";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { JobRecord, Profile, Project, Selection, DailyLog, Message, ScheduleTask } from "@/lib/types";
@@ -11,7 +15,11 @@ export const getViewer = cache(async () => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: profile } = await supabase.from("profiles").select("id, full_name, role").eq("id", user.id).single();
-  return { user, profile: (profile ?? { id: user.id, full_name: user.email ?? "", role: "client" }) as Profile, supabase };
+  const real = (profile ?? { id: user.id, full_name: user.email ?? "", role: "client" }) as Profile;
+  // "View as" preview: a builder sees the portal exactly as that role would. Writes are blocked while previewing.
+  const v = (await cookies()).get(VIEW_AS_COOKIE)?.value;
+  const viewAs: Tier | null = real.role === "builder" && isTier(v) ? v : null;
+  return { user, profile: viewAs ? { ...real, role: "client" as const } : real, realRole: real.role, viewAs, supabase };
 });
 
 export async function listProjects(): Promise<Project[]> {
@@ -43,7 +51,9 @@ export const getJobRecord = cache(async (projectId: string): Promise<JobRecord |
     supabase.from("project_members").select("user_id", { count: "exact", head: true }).eq("project_id", projectId),
   ]);
   let access: string[] = ALL_SECTIONS, tier = "builder";
-  if (profile.role !== "builder") {
+  const { viewAs } = await getViewer();
+  if (viewAs) { access = [...TIERS[viewAs].sections]; tier = viewAs; }
+  else if (profile.role !== "builder") {
     const { data: me } = await supabase.from("project_members").select("access, member_role").eq("project_id", projectId).eq("user_id", user.id).maybeSingle();
     access = (me?.access as string[] | undefined) ?? [];
     tier = me?.member_role ?? "client";
