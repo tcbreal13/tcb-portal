@@ -10,6 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const [r, { profile }] = await Promise.all([getJobRecord(id), getViewer()]);
   if (!r) return new NextResponse("Not found", { status: 404 });
+  if (!r.access.includes("schedule")) return new NextResponse("Not available", { status: 403 });
   const forBuilder = profile.role === "builder";
   const groups = groupByPhase(r.phases, visibleTasks(r, forBuilder));
   const bytes = await buildGanttPdf({

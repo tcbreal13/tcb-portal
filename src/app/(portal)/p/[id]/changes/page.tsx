@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { getJobRecord, getViewer, approvedTotal, pendingCos } from "@/lib/data";
+import { canSign } from "@/lib/access";
+import { requireSection, getJobRecord, getViewer, approvedTotal, pendingCos } from "@/lib/data";
 import { signed, fshort, sum } from "@/lib/format";
 import { Pill } from "@/components/Pill";
 import { DecideButtons } from "./DecideButtons";
@@ -8,7 +9,7 @@ export const metadata = { title: "Change orders" };
 
 export default async function Changes({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [r, { profile }] = await Promise.all([getJobRecord(id), getViewer()]);
+  const [r, { profile }] = await Promise.all([requireSection(id, "changes"), getViewer()]);
   if (!r) notFound();
   const cos = [...r.changeOrders].reverse();
   return (
@@ -24,7 +25,8 @@ export default async function Changes({ params }: { params: Promise<{ id: string
           </div>
           <p style={{ margin: 0, maxWidth: "70ch", whiteSpace: "pre-wrap" }}>{c.description}</p>
           {c.signed_name && c.status !== "pending" && <p className="note">Signed <b>{c.signed_name}</b> · {fshort(c.decided_date)}</p>}
-          {c.status === "pending" && <DecideButtons projectId={id} coId={c.id} code={c.code} title={c.title} amountLabel={signed(c.amount)} defaultName={profile.full_name} />}
+          {c.status === "pending" && canSign(r.tier) && <DecideButtons projectId={id} coId={c.id} code={c.code} title={c.title} amountLabel={signed(c.amount)} defaultName={profile.full_name} />}
+          {c.status === "pending" && !canSign(r.tier) && <p className="note">Awaiting the owner&rsquo;s decision.</p>}
         </div>
       ))}
     </>

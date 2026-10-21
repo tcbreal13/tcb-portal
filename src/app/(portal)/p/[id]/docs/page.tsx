@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getJobRecord, getViewer } from "@/lib/data";
+import { requireSection, getJobRecord, getViewer } from "@/lib/data";
 import { fdate } from "@/lib/format";
 import { DOC_FOLDERS, OTHER_FOLDER, CLIENT_FOLDER, normalizeFolder } from "@/lib/doc-folders";
 import { ClientUploadForm, RemoveOwnUpload } from "./ClientUpload";
@@ -9,7 +9,7 @@ export const metadata = { title: "Documents" };
 
 export default async function Docs({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [r, { supabase, profile, user }] = await Promise.all([getJobRecord(id), getViewer()]);
+  const [r, { supabase, profile, user }] = await Promise.all([requireSection(id, "documents"), getViewer()]);
   if (!r) notFound();
   const isBuilder = profile.role === "builder";
   let urls = new Map<string, string>();

@@ -12,6 +12,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const [r, { profile }] = await Promise.all([getJobRecord(id), getViewer()]);
   if (!r) return new NextResponse("Not found", { status: 404 });
+  if (!r.access.includes("schedule")) return new NextResponse("Not available", { status: 403 });
   const forBuilder = profile.role === "builder";
   const plain = !forBuilder || new URL(req.url).searchParams.get("format") === "client";
   const groups = groupByPhase(r.phases, visibleTasks(r, forBuilder));

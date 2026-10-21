@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getJobRecord, getViewer } from "@/lib/data";
+import { requireSection, getJobRecord, getViewer } from "@/lib/data";
 import { fdate, fshort } from "@/lib/format";
 import { Pill } from "@/components/Pill";
 import { Gantt } from "@/components/Gantt";
@@ -10,7 +10,7 @@ export const metadata = { title: "Schedule" };
 
 export default async function Schedule({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [r, { profile }] = await Promise.all([getJobRecord(id), getViewer()]);
+  const [r, { profile }] = await Promise.all([requireSection(id, "schedule"), getViewer()]);
   if (!r) notFound();
   const isBuilder = profile.role === "builder";
   const tasks = visibleTasks(r, isBuilder);

@@ -1,13 +1,6 @@
-import { AskClaude } from "./AskClaude";
+import { notFound } from "next/navigation";
 
-export const metadata = { title: "Ask Claude" };
-
-export default async function Ask({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> }) {
-  const [{ id }, { q }] = await Promise.all([params, searchParams]);
-  return (
-    <>
-      <div><h1>Ask Claude</h1><p className="sub">Answers come from this job&rsquo;s records only.</p></div>
-      <AskClaude projectId={id} initialQuestion={q} />
-    </>
-  );
+/** "Ask Claude" is switched off for now. The component and /api/claude stay so it can be turned back on. */
+export default function Ask() {
+  notFound();
 }

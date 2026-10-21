@@ -24,6 +24,8 @@ export async function POST(req: NextRequest) {
   let messages: { role: "user" | "assistant"; content: string }[];
 
   if (body.kind === "ask") {
+    // "Ask Claude" is switched off for clients for now; the builder drafting helpers below stay on.
+    if (profile.role !== "builder") return NextResponse.json({ error: "Not available" }, { status: 403 });
     const hist = (body.messages ?? []).slice(-12).filter((m) => typeof m.content === "string" && m.content.trim());
     if (!hist.length || hist[hist.length - 1].role !== "user") return NextResponse.json({ error: "No question" }, { status: 400 });
     system = `${ASK_SYSTEM}\n\nThe person asking is ${profile.role === "builder" ? "the builder, Tim" : "the homeowner"}.\n\nJOB RECORD (JSON):\n${json}`;

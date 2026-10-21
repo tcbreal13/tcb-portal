@@ -49,4 +49,8 @@ export interface JobRecord {
   updates: Update[];
   members: number;
   viewerId: string;
+  /** Sections this viewer may see on this job (builders: all). */
+  access: string[];
+  /** "builder", "client" or "architect". Only builders and clients sign selections. */
+  tier: string;
 }

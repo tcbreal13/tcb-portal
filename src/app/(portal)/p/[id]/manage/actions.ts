@@ -8,6 +8,7 @@ import { todayISO } from "@/lib/format";
 import { PAYAPP_DOCS } from "@/lib/types";
 import { normalizeFolder, OTHER_FOLDER } from "@/lib/doc-folders";
 import { typesFromForm } from "@/lib/project-types";
+import { sectionsFromForm, isTier } from "@/lib/access";
 
 type R = { error?: string; ok?: string } | null;
 const bust = (id: string) => revalidatePath(`/p/${id}`, "layout");
@@ -227,11 +228,21 @@ export async function inviteClient(id: string, _p: R, f: FormData): Promise<R> {
     userId = data.user.id;
   }
   if (full_name) await admin.from("profiles").update({ full_name }).eq("id", userId).eq("full_name", "");
-  const { error } = await supabase.from("project_members").upsert({ project_id: id, user_id: userId });
+  const tier = isTier(str(f, "member_role")) ? str(f, "member_role") : "client";
+  const { error } = await supabase.from("project_members").upsert({ project_id: id, user_id: userId, member_role: tier, access: sectionsFromForm(f) });
   const requestId = str(f, "request_id");
   if (!error && requestId) { await supabase.from("access_requests").update({ status: "done" }).eq("id", requestId); revalidatePath("/"); }
   bust(id);
   return error ? { error: error.message } : { ok: existing ? `${email} now has access to this job.` : `Invitation sent to ${email}. They'll get an email with a link to set their password.` };
+}
+/** Change one person's tier and section switches on this job. */
+export async function saveMemberAccess(id: string, userId: string, _p: R, f: FormData): Promise<R> {
+  const { supabase } = await requireBuilder();
+  const tier = str(f, "member_role");
+  if (!isTier(tier)) return { error: "Pick a role." };
+  const { error } = await supabase.from("project_members").update({ member_role: tier, access: sectionsFromForm(f) }).eq("project_id", id).eq("user_id", userId);
+  bust(id);
+  return error ? { error: error.message } : { ok: "Saved. Takes effect the next time they open a page." };
 }
 export async function removeMember(id: string, userId: string) {
   const { supabase } = await requireBuilder();

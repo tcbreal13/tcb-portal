@@ -1,15 +1,18 @@
 import Link from "next/link";
+import { canSign } from "@/lib/access";
 import { ProjectTypeTags } from "@/components/ProjectTypes";
 import { notFound } from "next/navigation";
-import { getJobRecord, billedTotal, revisedContract, pendingCos, openSelections, duePayApps } from "@/lib/data";
+import { requireSection, getJobRecord, billedTotal, revisedContract, pendingCos, openSelections, duePayApps } from "@/lib/data";
 import { usd, signed, fdate, fshort, fweekday } from "@/lib/format";
 
 export default async function Overview({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = await getJobRecord(id);
+  const r = await requireSection(id, "overview");
   if (!r) notFound();
   const base = `/p/${id}`;
-  const pc = pendingCos(r), os = openSelections(r), due = duePayApps(r);
+  const can = (k: string) => r.access.includes(k);
+  // Architects/designers can see selections but don't sign them, so they're never "waiting on you".
+  const pc = can("changes") ? pendingCos(r) : [], os = can("selections") && canSign(r.tier) ? openSelections(r) : [], due = can("budget") ? duePayApps(r) : [];
   const wait = pc.length + os.length;
   const billed = billedTotal(r), revised = revisedContract(r);
   const pct = revised > 0 ? Math.round((billed / revised) * 100) : 0;
@@ -32,8 +35,8 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
       <div className="stats">
         <div className="stat"><span>Waiting on you</span><b>{wait} {wait === 1 ? "decision" : "decisions"}</b></div>
         <div className="stat"><span>Target completion</span><b>{r.project.target_completion ? fdate(r.project.target_completion, { month: "short", year: "2-digit" }).replace(" ", " ’") : "TBD"}</b></div>
-        <div className="stat"><span>Billed to date</span><b>{usd(billed)}</b><span>{pct}% of {usd(revised)}</span></div>
-        <div className="stat"><span>Schedule</span><b>{r.project.schedule_status || "On track"}</b>{r.project.schedule_note && <span>{r.project.schedule_note}</span>}</div>
+        {can("budget") && <div className="stat"><span>Billed to date</span><b>{usd(billed)}</b><span>{pct}% of {usd(revised)}</span></div>}
+        {can("schedule") && <div className="stat"><span>Schedule</span><b>{r.project.schedule_status || "On track"}</b>{r.project.schedule_note && <span>{r.project.schedule_note}</span>}</div>}
       </div>
       <div className="cols">
         <div className="panel">
@@ -66,7 +69,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
             {u ? (<><div className="eyebrow">{fdate(u.update_date)}</div><p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>{u.body}</p></>)
                : <p className="note" style={{ margin: 0 }}>No update posted yet.</p>}
           </div>
-          <div className="panel">
+          {can("schedule") && <div className="panel">
             <h2>Coming up on site</h2>
             <div className="rows">
               {ahead.map((l) => (
@@ -78,7 +81,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
               {ahead.length + nextTasks.length === 0 && <p className="note" style={{ margin: 0 }}>The look-ahead will appear here as it&rsquo;s posted.</p>}
               {nextTasks.length > 0 && <p className="note" style={{ margin: "8px 0 0" }}><Link href={`${base}/schedule`}>Full schedule and Gantt chart →</Link></p>}
             </div>
-          </div>
+          </div>}
         </div>
       </div>
     </>

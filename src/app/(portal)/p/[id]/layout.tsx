@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { canSign } from "@/lib/access";
 import { SideNav, type NavItem } from "@/components/SideNav";
 import { getJobRecord, getViewer, openSelections, pendingCos } from "@/lib/data";
 
@@ -8,17 +9,18 @@ export default async function ProjectLayout({ children, params }: { children: Re
   if (!record) notFound();
   const base = `/p/${id}`;
 
+  // Only the sections this viewer may see (builders see all). Messages are always on. "Ask Claude" is off for now.
+  const can = (k: string) => record.access.includes(k);
   const client: NavItem[] = [
-    { href: base, label: "Overview" },
-    { href: `${base}/schedule`, label: "Schedule" },
-    { href: `${base}/logs`, label: "Daily logs & photos" },
-    { href: `${base}/budget`, label: "Budget & billing" },
-    { href: `${base}/changes`, label: "Change orders", count: pendingCos(record).length },
-    { href: `${base}/selections`, label: "Selections", count: openSelections(record).length },
-    { href: `${base}/docs`, label: "Documents" },
+    can("overview") && { href: base, label: "Overview" },
+    can("schedule") && { href: `${base}/schedule`, label: "Schedule" },
+    can("logs") && { href: `${base}/logs`, label: "Daily logs & photos" },
+    can("budget") && { href: `${base}/budget`, label: "Budget & billing" },
+    can("changes") && { href: `${base}/changes`, label: "Change orders", count: pendingCos(record).length },
+    can("selections") && { href: `${base}/selections`, label: "Selections", count: !canSign(record.tier) ? 0 : openSelections(record).length },
+    can("documents") && { href: `${base}/docs`, label: "Documents" },
     { href: `${base}/messages`, label: "Messages" },
-    { href: `${base}/ask`, label: "Ask Claude" },
-  ];
+  ].filter(Boolean) as NavItem[];
   const builder: NavItem[] | undefined = profile.role === "builder" ? [
     { href: `${base}/manage`, label: "Needs attention" },
     { href: `${base}/manage/updates`, label: "Weekly update" },

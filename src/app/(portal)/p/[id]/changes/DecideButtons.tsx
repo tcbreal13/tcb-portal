@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { decideChangeOrder } from "../actions";
 import { SignatureBox } from "@/components/SignatureBox";
 
@@ -29,7 +28,6 @@ export function DecideButtons({ projectId, coId, code, title, amountLabel, defau
     <div className="btns" style={{ marginTop: 12 }}>
       <button className="btn" onClick={() => setMode("approved")}>Approve {amountLabel}</button>
       <button className="btn ghost" onClick={() => setMode("declined")}>Decline</button>
-      <Link href={`/p/${projectId}/ask?q=${encodeURIComponent(`Explain ${code} and what happens if we decline it.`)}`} className="btn ghost">Ask Claude about this</Link>
     </div>
   );
 }

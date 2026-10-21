@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getJobRecord, getViewer, approvedTotal, billedTotal, revisedContract } from "@/lib/data";
+import { requireSection, getJobRecord, getViewer, approvedTotal, billedTotal, revisedContract } from "@/lib/data";
 import { usd, signed, fdate, sum } from "@/lib/format";
 import { Pill } from "@/components/Pill";
 import { signPayAppDocs } from "@/lib/payapp-docs";
@@ -9,7 +9,7 @@ export const metadata = { title: "Budget & billing" };
 
 export default async function Budget({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [r, { supabase, profile }] = await Promise.all([getJobRecord(id), getViewer()]);
+  const [r, { supabase, profile }] = await Promise.all([requireSection(id, "budget"), getViewer()]);
   if (!r) notFound();
   const isBuilder = profile.role === "builder";
   const docs = await signPayAppDocs(supabase, r.payApps);

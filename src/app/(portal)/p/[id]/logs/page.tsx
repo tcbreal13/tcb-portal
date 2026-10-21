@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
-import { getJobRecord } from "@/lib/data";
+import { requireSection } from "@/lib/data";
 import { fweekday } from "@/lib/format";
 
 export const metadata = { title: "Daily logs" };
 
 export default async function Logs({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = await getJobRecord(id);
+  const r = await requireSection(id, "logs");
   if (!r) notFound();
   return (
     <>

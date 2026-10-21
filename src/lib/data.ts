@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { normalizeFolder } from "@/lib/doc-folders";
-import { redirect } from "next/navigation";
+import { ALL_SECTIONS, firstAllowedPath, type SectionKey } from "@/lib/access";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { JobRecord, Profile, Project, Selection, DailyLog, Message, ScheduleTask } from "@/lib/types";
 
@@ -21,7 +22,7 @@ export async function listProjects(): Promise<Project[]> {
 
 /** Everything about one job, in one shot. RLS guarantees the viewer may see it. */
 export const getJobRecord = cache(async (projectId: string): Promise<JobRecord | null> => {
-  const { supabase, user } = await getViewer();
+  const { supabase, user, profile } = await getViewer();
   const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
   if (!project) return null;
 
@@ -41,6 +42,12 @@ export const getJobRecord = cache(async (projectId: string): Promise<JobRecord |
     supabase.from("updates").select("*").eq("project_id", projectId).order("update_date", { ascending: false }).limit(20),
     supabase.from("project_members").select("user_id", { count: "exact", head: true }).eq("project_id", projectId),
   ]);
+  let access: string[] = ALL_SECTIONS, tier = "builder";
+  if (profile.role !== "builder") {
+    const { data: me } = await supabase.from("project_members").select("access, member_role").eq("project_id", projectId).eq("user_id", user.id).maybeSingle();
+    access = (me?.access as string[] | undefined) ?? [];
+    tier = me?.member_role ?? "client";
+  }
 
   // Signed URLs for photos (private bucket). One batch call.
   const photoRows = photos.data ?? [];
@@ -80,6 +87,8 @@ export const getJobRecord = cache(async (projectId: string): Promise<JobRecord |
     updates: updates.data ?? [],
     members: members.count ?? 0,
     viewerId: user.id,
+    access,
+    tier,
   };
 });
 
@@ -121,4 +130,12 @@ export function recordForClaude(r: JobRecord) {
     documents: r.docs.map((d) => ({ title: d.title, folder: normalizeFolder(d.category), date: d.doc_date })),
     latestUpdates: r.updates.slice(0, 3).map((u) => ({ date: u.update_date, text: u.body })),
   };
+}
+
+/** Page guard for client sections: sends the viewer to the first section they may see. */
+export async function requireSection(projectId: string, key: SectionKey): Promise<JobRecord> {
+  const r = await getJobRecord(projectId);
+  if (!r) notFound();
+  if (!r.access.includes(key)) redirect(firstAllowedPath(`/p/${projectId}`, r.access));
+  return r;
 }
