@@ -68,7 +68,7 @@ export function layout(opts: { eyebrow?: string; title: string; preheader?: stri
     <tr><td class="card" style="background:#FFFFFF;border:1px solid ${LINE};border-top:0;padding:0 0 4px;line-height:4px;font-size:0">&nbsp;</td></tr>
     <tr><td class="mu" style="padding:18px 28px 6px;font:400 12px/1.6 ${FONT};color:${MUTED}">
       <strong class="ink" style="color:${INK};font-weight:600">TCB Consult LLC / TCB Development Ltd.</strong><br>
-      CSLB Lic #1093014 &nbsp;·&nbsp; Pacific Palisades, CA &nbsp;·&nbsp; (310) 984-6621<br>
+      CSLB Lic #1093014 &nbsp;·&nbsp; Santa Monica, CA &nbsp;·&nbsp; (310) 984-6621<br>
       Sent automatically from <a href="${SITE}" style="color:${MUTED}">${esc(SITE.replace(/^https?:\/\//, ""))}</a>. Questions? Just reply — it goes to Tim.
     </td></tr>
   </table>
