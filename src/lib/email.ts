@@ -12,27 +12,39 @@ function esc(s: string) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 
 /* ---------- brand layout (tables + inline styles so it renders the same in Gmail, Outlook and Apple Mail) ---------- */
 const INK = "#242424", MUTED = "#6B6B6B", LINE = "#D9D9D9", SUNK = "#F1F1F1", YELLOW = "#FFE30F", BLACK = "#111111";
+/** Our own dark-mode palette, so Apple Mail / Outlook / phone apps use it instead of auto-inverting (which turns the yellow olive). */
+const DARK_CSS = `:root{color-scheme:light dark;supported-color-schemes:light dark}
+@media (prefers-color-scheme: dark){
+ .bg{background:#111111!important}
+ .card{background:#1B1B1B!important;border-color:#333333!important}
+ .ink,.ink a{color:#F2F2F2!important}
+ .mu,.mu a{color:#A6A6A6!important}
+ .ln{border-color:#333333!important}
+ .yl{background:#FFE30F!important}
+ .btn{color:#000000!important}
+}
+[data-ogsc] .card{background:#1B1B1B!important} [data-ogsc] .ink{color:#F2F2F2!important} [data-ogsc] .mu{color:#A6A6A6!important} [data-ogsb] .yl{background:#FFE30F!important} [data-ogsc] .btn{color:#000000!important}`;
 const FONT = "'Barlow','Helvetica Neue',Helvetica,Arial,sans-serif";
 
 /** Label/value rows, styled like the portal's detail tables. */
 export function rows(pairs: [string, string][]) {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:16px 0;border-top:1px solid ${LINE}">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="ln" style="border-collapse:collapse;margin:16px 0;border-top:1px solid ${LINE}">
     ${pairs.map(([k, v]) => `<tr>
-      <td style="padding:10px 12px 10px 0;border-bottom:1px solid ${LINE};font:600 11px ${FONT};letter-spacing:.08em;text-transform:uppercase;color:${MUTED};width:34%;vertical-align:top">${esc(k)}</td>
-      <td style="padding:10px 0;border-bottom:1px solid ${LINE};font:400 15px/1.45 ${FONT};color:${INK};vertical-align:top">${v}</td></tr>`).join("")}
+      <td class="mu ln" style="padding:10px 12px 10px 0;border-bottom:1px solid ${LINE};font:600 11px ${FONT};letter-spacing:.08em;text-transform:uppercase;color:${MUTED};width:34%;vertical-align:top">${esc(k)}</td>
+      <td class="ink ln" style="padding:10px 0;border-bottom:1px solid ${LINE};font:400 15px/1.45 ${FONT};color:${INK};vertical-align:top">${v}</td></tr>`).join("")}
   </table>`;
 }
 
 /** Yellow pill, like the portal's status chips. */
-const chip = (text: string, bg = YELLOW, fg = "#000") => `<span style="display:inline-block;background:${bg};color:${fg};font:700 11px ${FONT};letter-spacing:.06em;text-transform:uppercase;padding:3px 8px">${esc(text)}</span>`;
+const chip = (text: string, bg = YELLOW, fg = "#000") => `<span class="${bg === YELLOW ? "yl btn" : ""}" style="display:inline-block;background:${bg};color:${fg};font:700 11px ${FONT};letter-spacing:.06em;text-transform:uppercase;padding:3px 8px">${esc(text)}</span>`;
 
 export function layout(opts: { eyebrow?: string; title: string; preheader?: string; body: string; cta?: { label: string; href: string }; footnote?: string }) {
   const { eyebrow, title, preheader, body, cta, footnote } = opts;
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${esc(title)}</title></head>
-<body style="margin:0;padding:0;background:${SUNK};-webkit-text-size-adjust:100%">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><style>${DARK_CSS}</style><title>${esc(title)}</title></head>
+<body class="bg" style="margin:0;padding:0;background:${SUNK};-webkit-text-size-adjust:100%">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${SUNK}">${esc(preheader ?? title)}&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SUNK}"><tr><td align="center" style="padding:28px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="bg" style="background:${SUNK}"><tr><td align="center" class="bg" style="padding:28px 12px">
   <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px">
     <!-- header: black band, logo, yellow rule (same as the portal top bar) -->
     <tr><td style="background:${BLACK};padding:22px 28px 18px">
@@ -41,21 +53,21 @@ export function layout(opts: { eyebrow?: string; title: string; preheader?: stri
         <td align="right" style="font:600 10.5px ${FONT};letter-spacing:.22em;text-transform:uppercase;color:#A6A6A6">Client portal</td>
       </tr></table>
     </td></tr>
-    <tr><td style="background:${YELLOW};height:4px;line-height:4px;font-size:0">&nbsp;</td></tr>
+    <tr><td class="yl" style="background:${YELLOW};height:4px;line-height:4px;font-size:0">&nbsp;</td></tr>
     <!-- card -->
-    <tr><td style="background:#FFFFFF;padding:30px 28px 26px;border-left:1px solid ${LINE};border-right:1px solid ${LINE}">
-      ${eyebrow ? `<div style="font:700 11px ${FONT};letter-spacing:.14em;text-transform:uppercase;color:${MUTED};margin:0 0 8px">${esc(eyebrow)}</div>` : ""}
-      <h1 style="margin:0 0 14px;font:600 25px/1.2 ${FONT};color:${INK};letter-spacing:.01em">${esc(title)}</h1>
-      <div style="font:400 15px/1.55 ${FONT};color:${INK}">${body}</div>
-      ${cta ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 4px"><tr><td style="background:${YELLOW};border:1px solid #000">
-        <a href="${cta.href}" style="display:inline-block;padding:12px 22px;font:700 13px ${FONT};letter-spacing:.08em;text-transform:uppercase;color:#000;text-decoration:none">${esc(cta.label)}</a></td></tr></table>
-        <div style="font:400 12px/1.5 ${FONT};color:${MUTED};margin-top:10px">Or open <a href="${cta.href}" style="color:${MUTED}">${esc(cta.href.replace(/^https?:\/\//, ""))}</a></div>` : ""}
-      ${footnote ? `<div style="margin-top:22px;padding-top:14px;border-top:1px solid ${LINE};font:400 13px/1.5 ${FONT};color:${MUTED}">${footnote}</div>` : ""}
+    <tr><td class="card" style="background:#FFFFFF;padding:30px 28px 26px;border-left:1px solid ${LINE};border-right:1px solid ${LINE}">
+      ${eyebrow ? `<div class="mu" style="font:700 11px ${FONT};letter-spacing:.14em;text-transform:uppercase;color:${MUTED};margin:0 0 8px">${esc(eyebrow)}</div>` : ""}
+      <h1 class="ink" style="margin:0 0 14px;font:600 25px/1.2 ${FONT};color:${INK};letter-spacing:.01em">${esc(title)}</h1>
+      <div class="ink" style="font:400 15px/1.55 ${FONT};color:${INK}">${body}</div>
+      ${cta ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 4px"><tr><td class="yl" style="background:${YELLOW};border:1px solid #000">
+        <a href="${cta.href}" class="btn" style="display:inline-block;padding:12px 22px;font:700 13px ${FONT};letter-spacing:.08em;text-transform:uppercase;color:#000;text-decoration:none">${esc(cta.label)}</a></td></tr></table>
+        <div class="mu" style="font:400 12px/1.5 ${FONT};color:${MUTED};margin-top:10px">Or open <a href="${cta.href}" style="color:${MUTED}">${esc(cta.href.replace(/^https?:\/\//, ""))}</a></div>` : ""}
+      ${footnote ? `<div class="mu ln" style="margin-top:22px;padding-top:14px;border-top:1px solid ${LINE};font:400 13px/1.5 ${FONT};color:${MUTED}">${footnote}</div>` : ""}
     </td></tr>
     <!-- footer -->
-    <tr><td style="background:#FFFFFF;border:1px solid ${LINE};border-top:0;padding:0 28px"><div style="height:1px;background:${LINE};line-height:1px;font-size:0">&nbsp;</div></td></tr>
-    <tr><td style="padding:18px 28px 6px;font:400 12px/1.6 ${FONT};color:${MUTED}">
-      <strong style="color:${INK};font-weight:600">TCB Consult LLC / TCB Development Ltd.</strong><br>
+    <tr><td class="card" style="background:#FFFFFF;border:1px solid ${LINE};border-top:0;padding:0 0 4px;line-height:4px;font-size:0">&nbsp;</td></tr>
+    <tr><td class="mu" style="padding:18px 28px 6px;font:400 12px/1.6 ${FONT};color:${MUTED}">
+      <strong class="ink" style="color:${INK};font-weight:600">TCB Consult LLC / TCB Development Ltd.</strong><br>
       CSLB Lic #1093014 &nbsp;·&nbsp; Pacific Palisades, CA &nbsp;·&nbsp; (310) 984-6621<br>
       Sent automatically from <a href="${SITE}" style="color:${MUTED}">${esc(SITE.replace(/^https?:\/\//, ""))}</a>. Questions? Just reply — it goes to Tim.
     </td></tr>
