@@ -150,3 +150,14 @@ export async function emailAccessRequested(d: { fullName: string; email: string;
       cta: { label: "Review request", href } }),
     textVersion("New access request", [`${d.fullName} <${d.email}>`, `Project: ${d.projectHint || "—"}`, d.message], href));
 }
+
+/** An agency email was filed as a suggestion (or couldn't be matched): heads-up to Tim to review. */
+export async function emailPredevSuggestion(d: { projectId: string | null; projectName: string | null; agency: string | null; summary: string; from: string; subject: string }) {
+  const href = d.projectId ? `${SITE}/p/${d.projectId}/predev` : `${SITE}/`;
+  const title = d.projectId ? "Agency email ready to review" : "Agency email needs a job";
+  await send([BUILDER_EMAIL], `[Portal] ${d.projectName ?? "Unsorted"}: ${d.subject || "agency email"}`,
+    layout({ eyebrow: "Pre-development", title, preheader: d.summary,
+      body: rows([["Job", esc(d.projectName ?? "Not matched — pick one on the portal")], ["Agency", esc(d.agency ?? "Not sure — pick one")], ["From", esc(d.from)], ["Subject", esc(d.subject)], ["Drafted entry", esc(d.summary)]]) + `<p style="margin:0">Nothing has changed on the job yet. Open it to accept, edit or reject.</p>`,
+      cta: { label: d.projectId ? "Review on the portal" : "File it", href } }),
+    textVersion(title, [`Job: ${d.projectName ?? "not matched"}`, `Agency: ${d.agency ?? "not sure"}`, `From: ${d.from}`, `Subject: ${d.subject}`, `Draft: ${d.summary}`], href));
+}

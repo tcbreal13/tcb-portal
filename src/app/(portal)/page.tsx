@@ -4,6 +4,7 @@ import { getViewer, listProjects } from "@/lib/data";
 import { fdate } from "@/lib/format";
 import { AccessRequests, type AccessRequest } from "./AccessRequests";
 import { ProjectTypeTags } from "@/components/ProjectTypes";
+import { UnsortedEmails, type InboundRow } from "./UnsortedEmails";
 
 export default async function Home() {
   const { profile, supabase } = await getViewer();
@@ -12,7 +13,10 @@ export default async function Home() {
   if (profile.role === "client" && projects.length === 1) redirect(`/p/${projects[0].id}`);
 
   let requests: AccessRequest[] = [];
+  let inbound: InboundRow[] = [];
   if (profile.role === "builder") {
+    const { data: ib } = await supabase.from("inbound_emails").select("id, received_at, from_addr, subject, body, status, extracted").in("status", ["unsorted", "ignored"]).order("received_at", { ascending: false }).limit(30);
+    inbound = (ib ?? []) as InboundRow[];
     const { data } = await supabase.from("access_requests").select("id, full_name, email, project_hint, message, created_at").eq("status", "new").order("created_at", { ascending: false });
     requests = data ?? [];
   }
@@ -23,6 +27,7 @@ export default async function Home() {
         <h1>{profile.role === "builder" ? "Projects" : "Your projects"}</h1>
         {profile.role === "builder" && <p className="sub">Open a job to see what the client sees, or to post logs, billing and change orders.</p>}
       </div>
+      {profile.role === "builder" && <UnsortedEmails emails={inbound} projects={projects.map((p) => ({ id: p.id, name: p.name }))} />}
       {profile.role === "builder" && <AccessRequests requests={requests} projects={projects.map((p) => ({ id: p.id, name: p.name }))} />}
       {projects.length === 0 ? (
         <div className="panel">

@@ -549,3 +549,5 @@ create policy "predev_activity: builder write" on predev_activity for all using 
 
 drop policy if exists "inbound_emails: builder" on inbound_emails;
 create policy "inbound_emails: builder" on inbound_emails for all using (is_builder()) with check (is_builder());
+-- 010: keep Claude's reading of each inbound email so unsorted ones can be filed by hand later
+alter table inbound_emails add column if not exists extracted jsonb not null default '{}'::jsonb;
