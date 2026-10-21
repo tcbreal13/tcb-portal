@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { todayISO } from "@/lib/format";
 import { PAYAPP_DOCS } from "@/lib/types";
 import { normalizeFolder, OTHER_FOLDER } from "@/lib/doc-folders";
+import { typesFromForm } from "@/lib/project-types";
 
 type R = { error?: string; ok?: string } | null;
 const bust = (id: string) => revalidatePath(`/p/${id}`, "layout");
@@ -17,7 +18,7 @@ export async function saveProject(id: string, _p: R, f: FormData): Promise<R> {
   const { error } = await supabase.from("projects").update({
     name: str(f, "name"), address: str(f, "address"), client_names: str(f, "client_names"), description: str(f, "description"),
     current_phase: str(f, "current_phase"), schedule_status: str(f, "schedule_status") || "On track", schedule_note: str(f, "schedule_note"),
-    contract_amount: num(f, "contract_amount"), target_completion: dateOrNull(f, "target_completion"), archived: f.get("archived") === "on",
+    contract_amount: num(f, "contract_amount"), target_completion: dateOrNull(f, "target_completion"), archived: f.get("archived") === "on", project_types: typesFromForm(f),
   }).eq("id", id);
   bust(id);
   return error ? { error: error.message } : { ok: "Saved." };
@@ -29,6 +30,7 @@ export async function createProject(_p: R, f: FormData): Promise<R> {
   if (!name) return { error: "Give the job a name." };
   const { data, error } = await supabase.from("projects").insert({
     name, address: str(f, "address"), client_names: str(f, "client_names"), contract_amount: num(f, "contract_amount"), target_completion: dateOrNull(f, "target_completion"),
+    project_types: typesFromForm(f),
   }).select("id").single();
   if (error || !data) return { error: error?.message ?? "Could not create the project." };
   revalidatePath("/");

@@ -1,5 +1,6 @@
 import { requireBuilder } from "@/lib/builder";
 import { AdminForm } from "@/components/AdminForm";
+import { ProjectTypePicker } from "@/components/ProjectTypes";
 import { createProject } from "../../p/[id]/manage/actions";
 
 export const metadata = { title: "New project" };
@@ -13,6 +14,7 @@ export default async function NewProject() {
         <AdminForm action={createProject} submit="Create project">
           <label htmlFor="name" style={{ marginTop: 0 }}>Job name</label>
           <input id="name" name="name" type="text" placeholder="Hartwell Residence" required />
+          <ProjectTypePicker />
           <label htmlFor="address">Address</label>
           <input id="address" name="address" type="text" placeholder="1284 Canyon Road, Los Angeles" />
           <label htmlFor="client_names">Clients (as shown to them)</label>

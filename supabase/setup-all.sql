@@ -374,3 +374,5 @@ drop policy if exists "schedule_tasks: member read" on schedule_tasks;
 create policy "schedule_tasks: member read" on schedule_tasks for select using (is_member(project_id));
 drop policy if exists "schedule_tasks: builder write" on schedule_tasks;
 create policy "schedule_tasks: builder write" on schedule_tasks for all using (is_builder()) with check (is_builder());
+-- 007: project type tags (multi-select)
+alter table projects add column if not exists project_types text[] not null default '{}';

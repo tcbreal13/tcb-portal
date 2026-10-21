@@ -5,7 +5,7 @@ export interface Profile { id: string; full_name: string; role: Role }
 export interface Project {
   id: string; name: string; address: string; client_names: string; description: string;
   current_phase: string; schedule_status: string; schedule_note: string;
-  contract_amount: number; target_completion: string | null; archived: boolean;
+  contract_amount: number; target_completion: string | null; archived: boolean; project_types: string[];
 }
 export interface Phase { id: string; project_id: string; name: string; start_date: string; end_date: string; percent_complete: number; sort_order: number }
 export type TaskStatus = "planned" | "in_progress" | "complete";

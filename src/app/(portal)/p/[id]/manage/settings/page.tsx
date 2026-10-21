@@ -3,6 +3,7 @@ import { requireBuilder } from "@/lib/builder";
 import { getJobRecord } from "@/lib/data";
 import { fdate } from "@/lib/format";
 import { AdminForm, DeleteButton } from "@/components/AdminForm";
+import { ProjectTypePicker } from "@/components/ProjectTypes";
 import { saveProject, savePhase, deleteRow } from "../actions";
 
 export const metadata = { title: "Job settings" };
@@ -33,6 +34,7 @@ export default async function Settings({ params }: { params: Promise<{ id: strin
             <div><label>Schedule note</label><input name="schedule_note" type="text" defaultValue={p.schedule_note} placeholder="Weather-tight by Oct 30" /></div>
             <div><label>Archived (hide from lists)</label><input name="archived" type="checkbox" defaultChecked={p.archived} style={{ width: "auto" }} /></div>
           </div>
+          <ProjectTypePicker value={p.project_types ?? []} />
         </AdminForm>
       </div>
 

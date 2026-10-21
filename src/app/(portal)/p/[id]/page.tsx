@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProjectTypeTags } from "@/components/ProjectTypes";
 import { notFound } from "next/navigation";
 import { getJobRecord, billedTotal, revisedContract, pendingCos, openSelections, duePayApps } from "@/lib/data";
 import { usd, signed, fdate, fshort, fweekday } from "@/lib/format";
@@ -23,6 +24,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
       <div>
         <div className="eyebrow">{r.project.address}</div>
         <h1>{r.project.name}</h1>
+        <ProjectTypeTags types={r.project.project_types} />
         {(r.project.description || r.project.current_phase) && (
           <p className="sub">{r.project.description}{r.project.description && r.project.current_phase ? ". " : ""}{r.project.current_phase && `Current phase: ${r.project.current_phase}.`}</p>
         )}

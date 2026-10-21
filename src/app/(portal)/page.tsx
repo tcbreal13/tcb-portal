@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getViewer, listProjects } from "@/lib/data";
 import { fdate } from "@/lib/format";
 import { AccessRequests, type AccessRequest } from "./AccessRequests";
+import { ProjectTypeTags } from "@/components/ProjectTypes";
 
 export default async function Home() {
   const { profile, supabase } = await getViewer();
@@ -35,6 +36,7 @@ export default async function Home() {
             <Link key={p.id} href={`/p/${p.id}`} className="projcard">
               <div className="eyebrow">{p.address || "Address pending"}</div>
               <h3>{p.name}</h3>
+              <ProjectTypeTags types={p.project_types} />
               <div className="d" style={{ fontSize: 13, color: "var(--muted)" }}>
                 {p.current_phase || "Preconstruction"}{p.target_completion ? ` · target ${fdate(p.target_completion)}` : ""}
               </div>
