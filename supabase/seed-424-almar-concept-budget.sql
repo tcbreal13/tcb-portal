@@ -5,16 +5,16 @@
 update projects set
   contract_amount = 2254233.33,
   current_phase = 'Preconstruction — concept budget',
-  description = 'Full rebuild of the main house with basement garage per NB Concept Design (Concept A / Concept B) at $700/SF of enclosed area; full demolition, down-to-the-studs removal per the Mayfield toxicology report (Dec 1, 2025). Budget is the average of Concept A, Concept B and the EO1 max buildout, spread across the v001 cost codes. No signed agreement on file. Garage/ADU budgeted separately ($385,621).',
+  description = 'Full rebuild of the main house with basement garage per NB Concept Design (Concept A / Concept B) ; full demolition, down-to-the-studs removal per the Mayfield toxicology report (Dec 1, 2025). Budget is the average of Concept A, Concept B and the EO1 max buildout, spread across the v001 cost codes. No signed agreement on file. Garage/ADU budgeted separately ($385,621).',
   budget_note = 'The clients will rebuild the main house and TCB will perform a full demolition. Removal down to the studs is carried only to the extent called for in the toxicology report (Mayfield Environmental, December 1, 2025).
 
-CONCEPT BUDGET @ $700/SF (TCB conceptual budget, NB Concept Design Meeting 1):
+CONCEPT BUDGET (TCB conceptual budget, NB Concept Design Meeting 1):
 Concept A as proposed — 3,100 SF — $2,170,000
 Concept B as proposed — 3,120 SF — $2,184,000
 EO1 maximum buildout — 3,441 SF — $2,408,700
 Budget carried below = average of the three — $2,254,233
 
-The breakdown by cost code is the March 2026 preliminary budget spread to that total. The basement garage is carried at the same rate for comparison only. Items the carrier''s estimate did not carry are included here rather than in the insurance comparison.'
+The breakdown by cost code is the March 2026 preliminary budget spread to that total. Items the carrier''s estimate did not carry are included here rather than in the insurance comparison.'
 where name = '424 Almar Ave';
 
 update budget_lines set budget = 106108.41 where project_id = (select id from projects where name = '424 Almar Ave') and category = '1300 — Partial to-the-studs demo per toxicology';

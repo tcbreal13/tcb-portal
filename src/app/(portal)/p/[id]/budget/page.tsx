@@ -16,7 +16,14 @@ export default async function Budget({ params }: { params: Promise<{ id: string 
   const tb = sum(r.budget, (b) => b.budget), tl = billedTotal(r), revised = revisedContract(r);
   return (
     <>
-      <div><h1>Budget &amp; billing</h1><p className="sub">Contract amounts against what has been billed. Lien waivers from TCB and each subcontractor are attached to every pay application.</p></div>
+      <div className="row nt">
+        <div className="grow"><h1>Budget &amp; billing</h1><p className="sub">Contract amounts against what has been billed. Lien waivers from TCB and each subcontractor are attached to every pay application.</p></div>
+        <div className="btns" style={{ gap: 6 }}>
+          <a className="btn ghost sm" href={`/p/${id}/budget/budget.pdf`}>PDF</a>
+          <a className="btn ghost sm" href={`/p/${id}/budget/budget.xlsx`}>Excel</a>
+          <a className="btn ghost sm" href={`/p/${id}/budget/budget.csv`}>CSV</a>
+        </div>
+      </div>
       {r.project.budget_note && (
         <div className="panel" style={{ borderLeft: "4px solid var(--accent, #ffe30f)" }}>
           <div className="eyebrow">Scope basis</div>
