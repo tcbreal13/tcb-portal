@@ -16,11 +16,10 @@ Plumbing rough-in and fixture adjustments at the remodeled bathrooms and kitchen
 Permits, plan check and LADBS inspections (repair, electrical, mechanical, plumbing) — USAA carried $187.92
 General conditions: supervision, temporary power and toilet, dust control, protection and final clean — not carried
 Structural engineer review of fire-exposed framing and the detached garage
-Contents pack-out and pack-back coordination (Coverage C, tracked separately)
 All of the above is carried in the TCB rebuild budget under Budget & billing.',
- '[{"label":"Dwelling (Coverage A)","amount":967000},{"label":"Dwelling - Trees, Shrubs and Other Plants","amount":48350},{"label":"Dwelling - Excess Debris Removal - Trees/Shrubs","amount":2417.50},{"label":"Other Structures (Coverage B)","amount":96700},{"label":"Other Structures - Excess Debris Removal","amount":4835}]'::jsonb,
- '[{"label":"Replacement cost value","amount":882964.08},{"label":"Less recoverable depreciation","amount":-31567.04},{"label":"Less non-recoverable depreciation","amount":-6705.46},{"label":"Less amount above limits","amount":-52672.71},{"label":"Less deductible","amount":-48350},{"label":"Actual cash value settlement","amount":743668.87},{"label":"Prior payments","amount":-386733.99},{"label":"Check issued 10/9/2026","amount":356934.88}]'::jsonb,
- 'Market rates are TCB draft Palisades rates from the 10/13/26 workbook (uplift 1.30x on lines not individually re-priced; O&P 10%/10%). Limits total $1,148,312 — extended replacement cost endorsement still to be confirmed with Keith Butler. Contents (Coverage C, $483,500) excluded.')
+ '[]'::jsonb,
+ '[]'::jsonb,
+ 'Market rates are TCB draft Palisades rates from the 10/13/26 workbook (uplift 1.30x on lines not individually re-priced; O&P 10%/10%). Policy limits and settlement figures intentionally left off the client view for now.')
 on conflict (project_id) do update set carrier = excluded.carrier, claim_number = excluded.claim_number, date_of_loss = excluded.date_of_loss, estimate_date = excluded.estimate_date, estimate_by = excluded.estimate_by, settlement_date = excluded.settlement_date, carrier_label = excluded.carrier_label, tcb_label = excluded.tcb_label, intro = excluded.intro, left_out = excluded.left_out, limits = excluded.limits, settlement = excluded.settlement, notes = excluded.notes, updated_at = now();
 
 delete from insurance_lines where project_id = (select id from projects where name = '424 Almar Ave');
