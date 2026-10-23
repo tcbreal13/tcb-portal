@@ -49,7 +49,7 @@ export async function savePhase(id: string, _p: R, f: FormData): Promise<R> {
   bust(id);
   return error ? { error: error.message } : { ok: "Saved." };
 }
-export async function deleteRow(id: string, table: "phases" | "lookahead_items" | "daily_logs" | "budget_lines" | "pay_apps" | "change_orders" | "selections" | "documents" | "updates" | "messages", rowId: string) {
+export async function deleteRow(id: string, table: "phases" | "lookahead_items" | "daily_logs" | "budget_lines" | "pay_apps" | "change_orders" | "selections" | "documents" | "updates" | "messages" | "insurance_lines", rowId: string) {
   const { supabase } = await requireBuilder();
   if (table === "documents") {
     const { data } = await supabase.from("documents").select("storage_path").eq("id", rowId).maybeSingle();
@@ -149,10 +149,59 @@ export async function saveChangeOrder(id: string, _p: R, f: FormData): Promise<R
   const row = { project_id: id, code, title: str(f, "title"), amount: num(f, "amount"), description: str(f, "description"), sent_date: dateOrNull(f, "sent_date") ?? todayISO() };
   if (!row.title || !row.description) return { error: "A change order needs a title and a description." };
   const status = str(f, "status");
-  const update = status && ["pending", "approved", "declined"].includes(status) ? { ...row, status, decided_date: status === "pending" ? null : (dateOrNull(f, "decided_date") ?? todayISO()) } : row;
+  const paid = { paid_date: status === "approved" ? dateOrNull(f, "paid_date") : null };
+  const update = status && ["pending", "approved", "declined"].includes(status) ? { ...row, ...paid, status, decided_date: status === "pending" ? null : (dateOrNull(f, "decided_date") ?? todayISO()) } : row;
   const { error } = await (coId ? supabase.from("change_orders").update(update).eq("id", coId) : supabase.from("change_orders").insert(update));
   bust(id);
   return error ? { error: error.message } : { ok: coId ? "Saved." : `${code} sent to the client.` };
+}
+
+/* ---------- Insurance budget comparison ---------- */
+function moneyLines(f: FormData, key: string) {
+  // textarea, one "Label | amount" per line
+  return str(f, key).split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const [label, amt] = l.split("|").map((x) => x.trim());
+    return { label: label ?? "", amount: Number(String(amt ?? "0").replace(/[^0-9.-]/g, "")) || 0 };
+  }).filter((x) => x.label);
+}
+export async function saveInsuranceClaim(id: string, _p: R, f: FormData): Promise<R> {
+  const { supabase } = await requireBuilder();
+  const row = {
+    project_id: id, carrier: str(f, "carrier"), claim_number: str(f, "claim_number"), date_of_loss: dateOrNull(f, "date_of_loss"),
+    estimate_date: dateOrNull(f, "estimate_date"), estimate_by: str(f, "estimate_by"), settlement_date: dateOrNull(f, "settlement_date"),
+    carrier_label: str(f, "carrier_label") || "Carrier estimate", tcb_label: str(f, "tcb_label") || "TCB market budget",
+    intro: str(f, "intro"), left_out: str(f, "left_out"), notes: str(f, "notes"), limits: moneyLines(f, "limits"), settlement: moneyLines(f, "settlement"), updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("insurance_claims").upsert(row, { onConflict: "project_id" });
+  bust(id);
+  return error ? { error: error.message } : { ok: "Saved." };
+}
+export async function saveInsuranceLine(id: string, _p: R, f: FormData): Promise<R> {
+  const { supabase } = await requireBuilder();
+  const lineId = str(f, "line_id");
+  const section = str(f, "section");
+  if (!["trade", "addon", "gap"].includes(section)) return { error: "Pick a section." };
+  const row = { project_id: id, section, category: str(f, "category"), carrier_amount: num(f, "carrier_amount"), tcb_amount: num(f, "tcb_amount"), note: str(f, "note"), sort_order: num(f, "sort_order") };
+  if (!row.category) return { error: "A line needs a trade or item name." };
+  const { error } = await (lineId ? supabase.from("insurance_lines").update(row).eq("id", lineId) : supabase.from("insurance_lines").insert(row));
+  bust(id);
+  return error ? { error: error.message } : { ok: lineId ? "Saved." : "Added." };
+}
+/** Paste rows from Excel: "Trade<TAB>carrier<TAB>tcb[<TAB>note]" per line; replaces the section when asked. */
+export async function importInsuranceLines(id: string, _p: R, f: FormData): Promise<R> {
+  const { supabase } = await requireBuilder();
+  const section = str(f, "section");
+  if (!["trade", "addon", "gap"].includes(section)) return { error: "Pick a section." };
+  const money = (v: string) => Number(String(v ?? "").replace(/[^0-9.-]/g, "")) || 0;
+  const rows = str(f, "paste").split("\n").map((l) => l.replace(/\r/g, "")).filter((l) => l.trim()).map((l, i) => {
+    const cells = l.includes("\t") ? l.split("\t") : l.split(",");
+    return { project_id: id, section, category: (cells[0] ?? "").trim(), carrier_amount: money(cells[1]), tcb_amount: money(cells[2]), note: (cells[3] ?? "").trim(), sort_order: i + 1 };
+  }).filter((r) => r.category && !/^(trade|category|item)$/i.test(r.category));
+  if (!rows.length) return { error: "Nothing to import — paste one line per trade: name, carrier amount, TCB amount." };
+  if (str(f, "replace") === "on") await supabase.from("insurance_lines").delete().eq("project_id", id).eq("section", section);
+  const { error } = await supabase.from("insurance_lines").insert(rows);
+  bust(id);
+  return error ? { error: error.message } : { ok: `${rows.length} line${rows.length === 1 ? "" : "s"} imported.` };
 }
 
 /* ---------- Selections ---------- */

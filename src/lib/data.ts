@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 export const VIEW_AS_COOKIE = "tcb_view_as";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { JobRecord, Profile, Project, Selection, DailyLog, Message, ScheduleTask } from "@/lib/types";
+import type { JobRecord, Profile, Project, Selection, DailyLog, Message, ScheduleTask, InsuranceClaim, InsuranceLine } from "@/lib/types";
 
 /** Signed-in user plus profile. Redirects to /login when signed out. */
 export const getViewer = cache(async () => {
@@ -34,7 +34,7 @@ export const getJobRecord = cache(async (projectId: string): Promise<JobRecord |
   const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
   if (!project) return null;
 
-  const [phases, tasks, lookahead, logs, photos, budget, payApps, changeOrders, selections, options, docs, messages, updates, members] = await Promise.all([
+  const [phases, tasks, lookahead, logs, photos, budget, payApps, changeOrders, selections, options, docs, messages, updates, members, insurance, insuranceLines] = await Promise.all([
     supabase.from("phases").select("*").eq("project_id", projectId).order("sort_order").order("start_date"),
     supabase.from("schedule_tasks").select("*").eq("project_id", projectId).order("sort_order").order("start_date"),
     supabase.from("lookahead_items").select("*").eq("project_id", projectId).order("item_date"),
@@ -49,6 +49,8 @@ export const getJobRecord = cache(async (projectId: string): Promise<JobRecord |
     supabase.from("messages").select("id, sender_id, body, created_at, profiles(full_name)").eq("project_id", projectId).order("created_at").limit(300),
     supabase.from("updates").select("*").eq("project_id", projectId).order("update_date", { ascending: false }).limit(20),
     supabase.from("project_members").select("user_id", { count: "exact", head: true }).eq("project_id", projectId),
+    supabase.from("insurance_claims").select("*").eq("project_id", projectId).maybeSingle(),
+    supabase.from("insurance_lines").select("*").eq("project_id", projectId).order("section").order("sort_order"),
   ]);
   let access: string[] = ALL_SECTIONS, tier = "builder";
   const { viewAs } = await getViewer();
@@ -91,6 +93,8 @@ export const getJobRecord = cache(async (projectId: string): Promise<JobRecord |
     budget: budget.data ?? [],
     payApps: payApps.data ?? [],
     changeOrders: changeOrders.data ?? [],
+    insurance: (insurance.data as InsuranceClaim | null) ?? null,
+    insuranceLines: (insuranceLines.data ?? []) as InsuranceLine[],
     selections: sels,
     docs: docs.data ?? [],
     messages: msgs,
@@ -110,6 +114,20 @@ export function pendingCos(r: JobRecord) { return r.changeOrders.filter((c) => c
 export function openSelections(r: JobRecord) { return r.selections.filter((s) => !s.chosen_option_id); }
 export function billedTotal(r: JobRecord) { return r.budget.reduce((t, b) => t + Number(b.billed), 0); }
 export function revisedContract(r: JobRecord) { return Number(r.project.contract_amount) + approvedTotal(r); }
+export function paidCoTotal(r: JobRecord) {
+  return r.changeOrders.filter((c) => c.status === "approved" && c.paid_date).reduce((t, c) => t + Number(c.amount), 0);
+}
+/** Carrier vs. TCB totals: by-trade subtotal, same-scope total (trades + add-ons), and the all-in TCB figure with scope gaps. */
+export function insuranceTotals(r: JobRecord) {
+  const by = (s: string, k: "carrier_amount" | "tcb_amount") => r.insuranceLines.filter((l) => l.section === s).reduce((t, l) => t + Number(l[k]), 0);
+  const trades = { carrier: by("trade", "carrier_amount"), tcb: by("trade", "tcb_amount") };
+  const addons = { carrier: by("addon", "carrier_amount"), tcb: by("addon", "tcb_amount") };
+  const gaps = { carrier: by("gap", "carrier_amount"), tcb: by("gap", "tcb_amount") };
+  const sameScope = { carrier: trades.carrier + addons.carrier, tcb: trades.tcb + addons.tcb };
+  const allIn = { carrier: sameScope.carrier + gaps.carrier, tcb: sameScope.tcb + gaps.tcb };
+  const limits = (r.insurance?.limits ?? []).reduce((t, l) => t + Number(l.amount), 0);
+  return { trades, addons, gaps, sameScope, allIn, limits };
+}
 export function duePayApps(r: JobRecord) { return r.payApps.filter((p) => p.status === "due"); }
 
 /** Plain-JSON version of the job record for Claude prompts. Photos and storage paths are left out. */
@@ -131,7 +149,13 @@ export function recordForClaude(r: JobRecord) {
     dailyLogs: r.logs.slice(0, 20).map((l) => ({ date: l.log_date, weather: l.weather, crew: l.crew, note: l.note, photoCount: l.photos.length })),
     budget: r.budget.map((b) => ({ category: b.category, budget: Number(b.budget), billed: Number(b.billed) })),
     payApplications: r.payApps.map((p) => ({ number: p.number, periodEnding: p.period_ending, amount: Number(p.amount), status: p.status, statusDate: p.status_date, note: p.waiver_note, documentsOnPortal: [p.invoice_path && "pay app package (invoice, G702/G703, conditional waiver)", p.unconditional_waiver_path && "unconditional waiver"].filter(Boolean) })),
-    changeOrders: r.changeOrders.map((c) => ({ id: c.code, title: c.title, amount: Number(c.amount), status: c.status, sent: c.sent_date, decided: c.decided_date, description: c.description })),
+    changeOrders: r.changeOrders.map((c) => ({ id: c.code, title: c.title, amount: Number(c.amount), status: c.status, sent: c.sent_date, decided: c.decided_date, paid: c.paid_date, description: c.description })),
+    insuranceComparison: r.insurance && r.access.includes("insurance") ? {
+      carrier: r.insurance.carrier, claimNumber: r.insurance.claim_number, dateOfLoss: r.insurance.date_of_loss, estimateDate: r.insurance.estimate_date,
+      policyLimits: r.insurance.limits, settlement: r.insurance.settlement,
+      lines: r.insuranceLines.map((l) => ({ section: l.section, category: l.category, carrier: Number(l.carrier_amount), tcb: Number(l.tcb_amount), note: l.note })),
+      totals: insuranceTotals(r),
+    } : null,
     selections: r.selections.map((s) => ({
       item: s.item, neededBy: s.needed_by,
       chosen: s.options.find((o) => o.id === s.chosen_option_id)?.name ?? null,

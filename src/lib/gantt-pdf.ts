@@ -1,5 +1,7 @@
 import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { DAY, axisTicks, isMilestone, scheduleRange, todayMs, toMs, type PhaseGroup } from "@/lib/schedule";
+import { logoPng } from "@/lib/insurance-export";
+import type { PDFImage } from "pdf-lib";
 
 /* Brand colours (print on white, same as the portal's light theme) */
 const INK = rgb(0.14, 0.14, 0.14), MUTED = rgb(0.42, 0.42, 0.42), LINE = rgb(0.85, 0.85, 0.85), SUNK = rgb(0.945, 0.945, 0.945);
@@ -27,6 +29,7 @@ export async function buildGanttPdf(input: GanttPdfInput): Promise<Uint8Array> {
   doc.setTitle(`${input.projectName} - Construction schedule`);
   doc.setAuthor("TCB Consult LLC / TCB Development Ltd.");
   const F = await doc.embedFont(StandardFonts.Helvetica), B = await doc.embedFont(StandardFonts.HelveticaBold);
+  const LOGO = await doc.embedPng(await logoPng());
 
   const PW = 792, PH = 612, M = 36;
   const COLS = { task: 236, start: 42, end: 42, days: 28, who: 92 };
@@ -52,7 +55,7 @@ export async function buildGanttPdf(input: GanttPdfInput): Promise<Uint8Array> {
 
   pages.forEach((prows, pi) => {
     const page = doc.addPage([PW, PH]);
-    drawHeader(page, F, B, input, { pi, n: pages.length, done, total: all.length, M, PW, PH });
+    drawHeader(page, F, B, input, { pi, n: pages.length, done, total: all.length, M, PW, PH, logo: LOGO });
     const top = PH - M - HEAD_H; // y of axis top
     // axis
     months.forEach((m, i) => {
@@ -122,11 +125,11 @@ function drawDiamond(page: PDFPage, cx: number, cy: number, r: number, color: Re
   page.drawRectangle({ x: cx, y: cy - r, width: s, height: s, rotate: degrees(45), color });
 }
 
-function drawHeader(page: PDFPage, F: PDFFont, B: PDFFont, input: GanttPdfInput, o: { pi: number; n: number; done: number; total: number; M: number; PW: number; PH: number }) {
+function drawHeader(page: PDFPage, F: PDFFont, B: PDFFont, input: GanttPdfInput, o: { pi: number; n: number; done: number; total: number; M: number; PW: number; PH: number; logo?: PDFImage }) {
   const { M, PW, PH } = o; const top = PH - M;
   page.drawRectangle({ x: M, y: top - 3, width: PW - 2 * M, height: 3, color: YELLOW });
-  page.drawText("TCB", { x: M, y: top - 26, size: 22, font: B, color: INK });
-  page.drawText("DEVELOPMENT LTD.  ·  CLIENT PORTAL", { x: M, y: top - 36, size: 6.5, font: F, color: MUTED });
+  if (o.logo) { const w = 88, h = w * (o.logo.height / o.logo.width); page.drawImage(o.logo, { x: M, y: top - 8 - h, width: w, height: h }); }
+  else { page.drawText("TCB", { x: M, y: top - 26, size: 22, font: B, color: INK }); page.drawText("DEVELOPMENT LTD.  ·  CLIENT PORTAL", { x: M, y: top - 36, size: 6.5, font: F, color: MUTED }); }
   page.drawText("CONSTRUCTION SCHEDULE", { x: M, y: top - 56, size: 13, font: B, color: INK });
   page.drawText(clean(`${input.projectName}${input.address ? " - " + input.address : ""}`), { x: M, y: top - 69, size: 9, font: F, color: INK });
   if (input.clients) page.drawText(clean(`Prepared for ${input.clients}`), { x: M, y: top - 80, size: 8, font: F, color: MUTED });

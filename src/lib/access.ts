@@ -5,6 +5,7 @@ export const SECTIONS = [
   { key: "schedule", label: "Schedule", path: "/schedule" },
   { key: "logs", label: "Daily logs & photos", path: "/logs" },
   { key: "budget", label: "Budget & billing", path: "/budget" },
+  { key: "insurance", label: "Insurance budget comparison", path: "/insurance" },
   { key: "changes", label: "Change orders", path: "/changes" },
   { key: "selections", label: "Selections", path: "/selections" },
   { key: "documents", label: "Documents", path: "/docs" },
@@ -25,7 +26,7 @@ export function firstAllowedPath(base: string, access: readonly string[]) {
 
 /** Member tiers and the sections each starts with. Individual switches can be changed afterwards. */
 export const TIERS = {
-  client: { label: "Client (owner)", sections: ALL_SECTIONS, canSign: true },
+  client: { label: "Client (owner)", sections: ALL_SECTIONS.filter((k) => k !== "insurance"), canSign: true },
   architect: { label: "Architect / Designer", sections: ["logs", "selections", "documents"] as SectionKey[], canSign: false },
   consultant: { label: "Consultant", sections: ["logs", "selections", "documents"] as SectionKey[], canSign: false },
 } as const;

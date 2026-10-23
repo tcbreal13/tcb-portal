@@ -27,12 +27,20 @@ export const PAYAPP_DOCS = [
   ["unconditional_waiver_path", "Unconditional waiver", "unconditional"],
 ] as const;
 export type PayAppDocKey = (typeof PAYAPP_DOCS)[number][0];
-export interface ChangeOrder { id: string; code: string; title: string; amount: number; description: string; status: "pending" | "approved" | "declined"; sent_date: string; decided_date: string | null; signed_name: string | null }
+export interface ChangeOrder { id: string; code: string; title: string; amount: number; description: string; status: "pending" | "approved" | "declined"; sent_date: string; decided_date: string | null; signed_name: string | null; paid_date: string | null }
 export interface SelectionOption { id: string; selection_id: string; name: string; price_delta: number; sort_order: number }
 export interface Selection { id: string; item: string; needed_by: string | null; chosen_option_id: string | null; chosen_at: string | null; signed_name: string | null; options: SelectionOption[] }
 export interface Doc { id: string; title: string; category: string; doc_date: string; storage_path: string; uploaded_by: string | null }
 export interface Message { id: string; sender_id: string; body: string; created_at: string; sender_name: string }
 export interface Update { id: string; update_date: string; body: string }
+
+export interface MoneyLine { label: string; amount: number }
+export interface InsuranceClaim {
+  project_id: string; carrier: string; claim_number: string; date_of_loss: string | null; estimate_date: string | null; estimate_by: string;
+  settlement_date: string | null; carrier_label: string; tcb_label: string; intro: string; left_out: string; limits: MoneyLine[]; settlement: MoneyLine[]; notes: string;
+}
+export type InsuranceSection = "trade" | "addon" | "gap";
+export interface InsuranceLine { id: string; section: InsuranceSection; category: string; carrier_amount: number; tcb_amount: number; note: string; sort_order: number }
 
 export interface JobRecord {
   project: Project;
@@ -43,6 +51,9 @@ export interface JobRecord {
   budget: BudgetLine[];
   payApps: PayApp[];
   changeOrders: ChangeOrder[];
+  /** Carrier estimate vs. TCB budget. Null when no claim record exists on the job. */
+  insurance: InsuranceClaim | null;
+  insuranceLines: InsuranceLine[];
   selections: Selection[];
   docs: Doc[];
   messages: Message[];

@@ -30,7 +30,7 @@ export default async function ManageChanges({ params }: { params: Promise<{ id: 
         {r.changeOrders.length === 0 && <p className="note" style={{ margin: 0 }}>None yet.</p>}
         {[...r.changeOrders].reverse().map((c) => (
           <details className="panel" key={c.id} style={{ marginBottom: 8 }}>
-            <summary>{c.code} · {c.title} · {signed(c.amount)} <Pill kind={c.status === "approved" ? "good" : c.status === "declined" ? "crit" : "warn"}>{c.status}{c.decided_date ? ` ${fshort(c.decided_date)}` : ""}</Pill></summary>
+            <summary>{c.code} · {c.title} · {signed(c.amount)} <Pill kind={c.status === "approved" ? "good" : c.status === "declined" ? "crit" : "warn"}>{c.status}{c.decided_date ? ` ${fshort(c.decided_date)}` : ""}</Pill>{c.paid_date && <Pill kind="good">paid {fshort(c.paid_date)}</Pill>}</summary>
             <AdminForm action={save} submit="Save changes">
               <input type="hidden" name="co_id" value={c.id} />
               <div className="grid2">
@@ -40,6 +40,7 @@ export default async function ManageChanges({ params }: { params: Promise<{ id: 
                 <div><label>Sent</label><input name="sent_date" type="date" defaultValue={c.sent_date} /></div>
                 <div><label>Status (override if signed on paper)</label><select name="status" defaultValue={c.status}><option value="pending">Pending</option><option value="approved">Approved</option><option value="declined">Declined</option></select></div>
                 <div><label>Decided date</label><input name="decided_date" type="date" defaultValue={c.decided_date ?? ""} /></div>
+                <div><label>Paid date (approved only)</label><input name="paid_date" type="date" defaultValue={c.paid_date ?? ""} /></div>
               </div>
               <label>Description</label>
               <textarea name="description" defaultValue={c.description} required />
