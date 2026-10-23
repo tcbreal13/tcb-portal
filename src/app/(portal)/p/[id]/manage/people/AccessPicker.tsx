@@ -7,7 +7,9 @@ import { SECTIONS, TIERS, type Tier } from "@/lib/access";
  * Role picker + section switches. Picking a role pre-ticks that role's default sections;
  * Tim can then tick or untick anything before saving. Messages are always on.
  */
-export function AccessPicker({ tier: initialTier = "client", access: initialAccess }: { tier?: string; access?: string[] }) {
+export function AccessPicker({ tier: initialTier = "client", access: initialAccess, jobId }: { tier?: string; access?: string[]; jobId?: string }) {
+  // One form can hold several jobs (the invite review page); each job gets its own field names.
+  const roleName = jobId ? `role_${jobId}` : "member_role", accessName = jobId ? `access_${jobId}` : "access";
   const start = (initialTier in TIERS ? initialTier : "client") as Tier;
   const [tier, setTier] = useState<Tier>(start);
   const [on, setOn] = useState<string[]>(initialAccess ?? [...TIERS[start].sections]);
@@ -20,7 +22,7 @@ export function AccessPicker({ tier: initialTier = "client", access: initialAcce
         <div className="typegrid">
           {(Object.keys(TIERS) as Tier[]).map((t) => (
             <label key={t} className="typeopt">
-              <input type="radio" name="member_role" value={t} checked={tier === t} onChange={() => pickTier(t)} />
+              <input type="radio" name={roleName} value={t} checked={tier === t} onChange={() => pickTier(t)} />
               <span className="box" aria-hidden="true" style={{ borderRadius: "50%" }} />
               <span>{TIERS[t].label}</span>
             </label>
@@ -32,7 +34,7 @@ export function AccessPicker({ tier: initialTier = "client", access: initialAcce
         <div className="typegrid">
           {SECTIONS.map((s) => (
             <label key={s.key} className="typeopt">
-              <input type="checkbox" name="access" value={s.key} checked={on.includes(s.key)} onChange={() => toggle(s.key)} />
+              <input type="checkbox" name={accessName} value={s.key} checked={on.includes(s.key)} onChange={() => toggle(s.key)} />
               <span className="box" aria-hidden="true" />
               <span>{s.label}</span>
             </label>

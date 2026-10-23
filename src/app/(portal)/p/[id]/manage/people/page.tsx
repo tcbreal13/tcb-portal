@@ -15,10 +15,11 @@ export default async function People({ params, searchParams }: { params: Promise
   if (!r) notFound();
   const { data: members } = await supabase.from("project_members").select("user_id, member_role, access, profiles(full_name)").eq("project_id", id);
   const invite = inviteClient.bind(null, id);
+  const { data: drafts } = await supabase.from("invite_jobs").select("invites!inner(id, full_name, email, status)").eq("project_id", id).eq("invites.status", "draft");
 
   return (
     <>
-      <div><h1>Clients &amp; access</h1><p className="sub">Each person you invite gets an email with a link to set their password, and then sees only this job — and only the sections you tick.</p></div>
+      <div><h1>Clients &amp; access</h1><p className="sub">Each person you invite gets an email with a link to set their password (or tick “Review before sending” to set it up first and activate later), and then sees only this job — and only the sections you tick.</p></div>
       <div className="panel">
         <h2>Invite someone</h2>
         <AdminForm action={invite} submit="Send invitation" reset>
@@ -28,8 +29,29 @@ export default async function People({ params, searchParams }: { params: Promise
             <div><label htmlFor="email" style={{ marginTop: 0 }}>Email</label><input id="email" name="email" type="email" required defaultValue={sp.email ?? ""} /></div>
           </div>
           <AccessPicker />
+          <label className="typeopt" style={{ marginTop: 10 }}>
+            <input type="checkbox" name="review" defaultChecked={!!sp.req} />
+            <span className="box" aria-hidden="true" />
+            <span>Review before sending — save as a draft, preview it, then activate and send their link</span>
+          </label>
         </AdminForm>
       </div>
+      {(drafts ?? []).length > 0 && (
+        <div className="panel">
+          <h2>Waiting for activation</h2>
+          <div className="rows">
+            {(drafts ?? []).map((d) => {
+              const i = (Array.isArray(d.invites) ? d.invites[0] : d.invites) as { id: string; full_name: string; email: string };
+              return (
+                <div className="row" key={i.id}>
+                  <div className="grow"><div className="t">{i.full_name || i.email}</div><div className="d">{i.email} · draft, no login yet</div></div>
+                  <a className="btn sm" href={`/invites/${i.id}`}>Review &amp; activate</a>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="panel">
         <h2>Who has access</h2>
         <div className="rows">

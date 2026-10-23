@@ -146,9 +146,34 @@ export async function emailAccessRequested(d: { fullName: string; email: string;
   const href = `${SITE}/`;
   await send([BUILDER_EMAIL], `[Portal] Access request from ${d.fullName}`,
     layout({ eyebrow: "Builder notice", title: "New access request", preheader: `${d.fullName} · ${d.projectHint || "no project given"}`,
-      body: rows([["Name", esc(d.fullName)], ["Email", `<a href="mailto:${esc(d.email)}" style="color:${INK}">${esc(d.email)}</a>`], ["Project", esc(d.projectHint || "—")], ["Message", esc(d.message || "—").replace(/\n/g, "<br>")]]) + `<p style="margin:0">Approve it from the access-request list on your portal home page — that sends the invite.</p>`,
+      body: rows([["Name", esc(d.fullName)], ["Email", `<a href="mailto:${esc(d.email)}" style="color:${INK}">${esc(d.email)}</a>`], ["Project", esc(d.projectHint || "—")], ["Message", esc(d.message || "—").replace(/\n/g, "<br>")]]) + `<p style="margin:0">Review it from your portal home page: choose their jobs and what they can see, then activate. Nothing is sent to them until you do.</p>`,
       cta: { label: "Review request", href } }),
     textVersion("New access request", [`${d.fullName} <${d.email}>`, `Project: ${d.projectHint || "—"}`, d.message], href));
+}
+
+/** To the person who asked for access: we have it, Tim reviews it, the activation link comes next. */
+export async function emailRequestReceived(d: { fullName: string; email: string; projectHint: string }) {
+  await send([d.email], "We received your portal access request",
+    layout({ eyebrow: "Access request", title: "Request received", preheader: "Tim will review it and send your activation link.",
+      body: `<p style="margin:0 0 12px">Hi ${first(d.fullName)},</p>
+        <p style="margin:0 0 12px">Thanks for requesting access to the TCB client portal${d.projectHint ? ` for <strong>${esc(d.projectHint)}</strong>` : ""}. Tim reviews every request personally and sets up what you'll see on your project.</p>
+        <p style="margin:0">Once it's ready you'll get a second email with your activation link. There's nothing else to do until then.</p>` }),
+    textVersion("Request received", [`Hi ${d.fullName.split(" ")[0] || "there"},`, `Thanks for requesting access to the TCB client portal${d.projectHint ? ` for ${d.projectHint}` : ""}.`, "Tim reviews every request personally. You'll get a second email with your activation link once it's ready."]));
+}
+
+/** Activation link after Tim has reviewed and set up someone's access. */
+export async function emailActivation(d: { fullName: string; email: string; link: string; isNewAccount: boolean; note: string; jobs: { name: string; role: string; sections: string[] }[] }) {
+  const title = d.isNewAccount ? "Your portal access is ready" : "You have access to a new project";
+  const jobRows: [string, string][] = d.jobs.map((j) => [j.name, `${esc(j.role)}<br><span class="mu" style="color:${MUTED};font-size:13px">${esc(j.sections.length ? j.sections.join(" · ") : "Messages")}</span>`]);
+  return send([d.email], d.isNewAccount ? "Activate your TCB client portal account" : "New project in your TCB client portal",
+    layout({ eyebrow: "TCB client portal", title, preheader: d.isNewAccount ? "Activate your account and set your password." : "Sign in to see your project.",
+      body: `<p style="margin:0 0 12px">Hi ${first(d.fullName)},</p>
+        ${d.note ? `<p style="margin:0 0 12px">${esc(d.note).replace(/\n/g, "<br>")}</p>` : ""}
+        <p style="margin:0">${d.isNewAccount ? "Your account is set up. Activate it below and choose a password; you'll go straight to your project." : "Tim has added you to another project. Use the button below to sign in."}</p>
+        ${rows(jobRows)}`,
+      cta: { label: d.isNewAccount ? "Activate my account" : "Open the portal", href: d.link },
+      footnote: "This link is personal and works once. If it has expired, reply to this email and Tim will send a new one. Afterwards, sign in any time at tcbbuilder.com." }),
+    textVersion(title, [`Hi ${d.fullName.split(" ")[0] || "there"},`, ...(d.note ? [d.note] : []), ...d.jobs.map((j) => `${j.name}: ${j.role} (${j.sections.join(", ") || "Messages"})`), d.isNewAccount ? "Activate your account and set a password:" : "Sign in:"], d.link));
 }
 
 /** An agency email was filed as a suggestion (or couldn't be matched): heads-up to Tim to review. */

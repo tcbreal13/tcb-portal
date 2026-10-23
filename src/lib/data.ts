@@ -17,9 +17,12 @@ export const getViewer = cache(async () => {
   const { data: profile } = await supabase.from("profiles").select("id, full_name, role").eq("id", user.id).single();
   const real = (profile ?? { id: user.id, full_name: user.email ?? "", role: "client" }) as Profile;
   // "View as" preview: a builder sees the portal exactly as that role would. Writes are blocked while previewing.
-  const v = (await cookies()).get(VIEW_AS_COOKIE)?.value;
+  // Cookie is "tier" or "tier~section,section~/return/path" (the exact set from an invite under review).
+  const [v, secs, back] = ((await cookies()).get(VIEW_AS_COOKIE)?.value ?? "").split("~");
   const viewAs: Tier | null = real.role === "builder" && isTier(v) ? v : null;
-  return { user, profile: viewAs ? { ...real, role: "client" as const } : real, realRole: real.role, viewAs, supabase };
+  const viewAsSections: string[] | null = viewAs && secs !== undefined ? secs.split(",").filter((k) => (ALL_SECTIONS as string[]).includes(k)) : null;
+  const viewAsBack = viewAs && back?.startsWith("/") ? back : null;
+  return { user, profile: viewAs ? { ...real, role: "client" as const } : real, realRole: real.role, viewAs, viewAsSections, viewAsBack, supabase };
 });
 
 export async function listProjects(): Promise<Project[]> {
@@ -53,8 +56,8 @@ export const getJobRecord = cache(async (projectId: string): Promise<JobRecord |
     supabase.from("insurance_lines").select("*").eq("project_id", projectId).order("section").order("sort_order"),
   ]);
   let access: string[] = ALL_SECTIONS, tier = "builder";
-  const { viewAs } = await getViewer();
-  if (viewAs) { access = [...TIERS[viewAs].sections]; tier = viewAs; }
+  const { viewAs, viewAsSections } = await getViewer();
+  if (viewAs) { access = viewAsSections ?? [...TIERS[viewAs].sections]; tier = viewAs; }
   else if (profile.role !== "builder") {
     const { data: me } = await supabase.from("project_members").select("access, member_role").eq("project_id", projectId).eq("user_id", user.id).maybeSingle();
     access = (me?.access as string[] | undefined) ?? [];

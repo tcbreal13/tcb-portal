@@ -262,6 +262,8 @@ export async function inviteClient(id: string, _p: R, f: FormData): Promise<R> {
   const email = str(f, "email").toLowerCase();
   const full_name = str(f, "full_name");
   if (!email.includes("@")) return { error: "Enter a valid email." };
+  // "Review before sending": park it as a draft on the invite review page; no login, no email yet.
+  if (f.get("review") === "on") { const { draftFromPeople } = await import("@/app/(portal)/invites/actions"); await draftFromPeople(id, f); return { error: "Couldn't save the draft." }; }
 
   let admin;
   try { admin = createAdminClient(); } catch { return { error: "Inviting needs SUPABASE_SERVICE_ROLE_KEY set in Vercel." }; }

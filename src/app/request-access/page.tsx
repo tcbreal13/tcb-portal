@@ -16,7 +16,7 @@ export default function RequestAccessPage() {
           <p className="sub">Portal accounts are set up by TCB for each project. Tell us who you are and we&rsquo;ll send you an invitation.</p>
         </div>
         {state?.ok ? (
-          <p className="ok" role="status" style={{ margin: 0 }}>Thanks — Tim has your request and will send an invitation to your email. Nothing else to do for now.</p>
+          <p className="ok" role="status" style={{ margin: 0 }}>Thanks — Tim has your request. We&rsquo;ve emailed you a confirmation; once Tim has set up your access you&rsquo;ll get a second email with your activation link.</p>
         ) : (
           <>
             <div>
