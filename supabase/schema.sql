@@ -597,3 +597,6 @@ create policy "insurance_lines: builder write" on insurance_lines for all using 
 
 -- paid date on change orders (approved → paid), shown to the client as a "Paid" pill
 alter table change_orders add column if not exists paid_date date;
+
+-- 012: a note the client sees at the top of Budget & billing (scope basis, what the budget covers)
+alter table projects add column if not exists budget_note text not null default '';

@@ -34,6 +34,8 @@ export default async function Settings({ params }: { params: Promise<{ id: strin
             <div><label>Schedule note</label><input name="schedule_note" type="text" defaultValue={p.schedule_note} placeholder="Weather-tight by Oct 30" /></div>
             <div><label>Archived (hide from lists)</label><input name="archived" type="checkbox" defaultChecked={p.archived} style={{ width: "auto" }} /></div>
           </div>
+          <label>Budget note (shown to the client at the top of Budget &amp; billing)</label>
+          <textarea name="budget_note" defaultValue={p.budget_note ?? ""} rows={3} placeholder="What the budget covers and the basis for its scope" />
           <ProjectTypePicker value={p.project_types ?? []} />
         </AdminForm>
       </div>

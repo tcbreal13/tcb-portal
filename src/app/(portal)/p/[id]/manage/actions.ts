@@ -20,6 +20,7 @@ export async function saveProject(id: string, _p: R, f: FormData): Promise<R> {
     name: str(f, "name"), address: str(f, "address"), client_names: str(f, "client_names"), description: str(f, "description"),
     current_phase: str(f, "current_phase"), schedule_status: str(f, "schedule_status") || "On track", schedule_note: str(f, "schedule_note"),
     contract_amount: num(f, "contract_amount"), target_completion: dateOrNull(f, "target_completion"), archived: f.get("archived") === "on", project_types: typesFromForm(f),
+    budget_note: str(f, "budget_note"),
   }).eq("id", id);
   bust(id);
   return error ? { error: error.message } : { ok: "Saved." };

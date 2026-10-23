@@ -17,6 +17,12 @@ export default async function Budget({ params }: { params: Promise<{ id: string 
   return (
     <>
       <div><h1>Budget &amp; billing</h1><p className="sub">Contract amounts against what has been billed. Lien waivers from TCB and each subcontractor are attached to every pay application.</p></div>
+      {r.project.budget_note && (
+        <div className="panel" style={{ borderLeft: "4px solid var(--accent, #ffe30f)" }}>
+          <div className="eyebrow">Scope basis</div>
+          <p style={{ margin: "6px 0 0", maxWidth: "80ch", whiteSpace: "pre-wrap" }}>{r.project.budget_note}</p>
+        </div>
+      )}
       <div className="stats">
         <div className="stat"><span>Original contract</span><b>{usd(r.project.contract_amount)}</b></div>
         <div className="stat"><span>Approved change orders</span><b>{signed(approvedTotal(r))}</b></div>

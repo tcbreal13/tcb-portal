@@ -137,7 +137,7 @@ export function recordForClaude(r: JobRecord) {
     project: {
       name: r.project.name, address: r.project.address, clients: r.project.client_names, description: r.project.description,
       currentPhase: r.project.current_phase, scheduleStatus: r.project.schedule_status, scheduleNote: r.project.schedule_note,
-      originalContract: Number(r.project.contract_amount), targetCompletion: r.project.target_completion,
+      originalContract: Number(r.project.contract_amount), targetCompletion: r.project.target_completion, budgetNote: r.project.budget_note,
     },
     approvedChangeOrdersTotal: approvedTotal(r),
     revisedContract: revisedContract(r),
