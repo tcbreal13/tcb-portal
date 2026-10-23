@@ -41,6 +41,7 @@ export default async function ManageInsurance({ params }: { params: Promise<{ id
 
       {c && (
         <div className="btns" style={{ marginBottom: 12 }}>
+          <a className="btn ghost sm" href={`/p/${id}/insurance/comparison.pdf`}>Download PDF</a>
           <a className="btn ghost sm" href={`/p/${id}/insurance/comparison.xlsx`}>Download Excel</a>
           <a className="btn ghost sm" href={`/p/${id}/insurance/comparison.csv`}>Download CSV</a>
         </div>

@@ -50,6 +50,7 @@ export default async function Insurance({ params }: { params: Promise<{ id: stri
       <div className="row nt">
         <div className="grow"><h1>Insurance budget comparison</h1><p className="sub">{meta}</p></div>
         <div className="btns" style={{ gap: 6 }}>
+          <a className="btn ghost sm" href={`/p/${id}/insurance/comparison.pdf`}>PDF</a>
           <a className="btn ghost sm" href={`/p/${id}/insurance/comparison.xlsx`}>Excel</a>
           <a className="btn ghost sm" href={`/p/${id}/insurance/comparison.csv`}>CSV</a>
         </div>

@@ -68,7 +68,8 @@ export async function buildInsuranceXlsx(input: InsuranceExportInput): Promise<B
   // two-cell anchor: the one-cell form renders in LibreOffice but Excel for Mac / iPad and Quick Look drop it
   for (let i = 1; i <= 4; i++) ws.getRow(i).height = 19;
   // native offsets are EMU (914400 per inch): logo 1.85in x 0.75in inside column A, rows 1-4
-  ws.addImage(logo, { tl: { nativeCol: 0, nativeColOff: 0, nativeRow: 0, nativeRowOff: 45720 }, br: { nativeCol: 0, nativeColOff: 1691640, nativeRow: 3, nativeRowOff: 182880 }, editAs: "twoCell" } as never);
+  // logo is 900x366 (2.459:1). Box: 1.60in wide x 0.651in tall; rows 1-4 are 19pt each, so the box ends 11.85pt into row 3.
+  ws.addImage(logo, { tl: { nativeCol: 0, nativeColOff: 0, nativeRow: 0, nativeRowOff: 38100 }, br: { nativeCol: 0, nativeColOff: 1463040, nativeRow: 2, nativeRowOff: 150495 }, editAs: "twoCell" } as never);
   const put = (r: number, c: number, v: ExcelJS.CellValue, o: { b?: boolean; size?: number; color?: string; fmt?: string; align?: "left" | "right"; fill?: string; wrap?: boolean } = {}) => {
     const cell = ws.getCell(r, c); cell.value = v;
     cell.font = { name: "Arial", size: o.size ?? 10, bold: !!o.b, color: { argb: o.color ?? INK } };
