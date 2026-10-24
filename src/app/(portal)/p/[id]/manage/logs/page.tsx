@@ -20,7 +20,7 @@ export default async function ManageLogs({ params }: { params: Promise<{ id: str
     <>
       <div><h1>Post a daily log</h1><p className="sub">A few sentences and a handful of photos from your phone is plenty. Clients read these more than anything else.</p></div>
       <div className="panel">
-        <AdminForm action={post} submit="Post log" reset>
+        <AdminForm action={post} submit="Post log" reset uploadTo={{ bucket: "photos", prefix: `${id}/logs` }}>
           <div className="grid2">
             <div><label htmlFor="log_date" style={{ marginTop: 0 }}>Date</label><input id="log_date" name="log_date" type="date" defaultValue={today} required /></div>
             <div><label htmlFor="weather" style={{ marginTop: 0 }}>Weather</label><input id="weather" name="weather" type="text" placeholder="Clear, 78°F" /></div>
@@ -31,7 +31,7 @@ export default async function ManageLogs({ params }: { params: Promise<{ id: str
           <textarea id="note" name="note" required placeholder="Set 11 of 34 window units on the south elevation. Roofers finished underlayment on the main ridge…" />
           <label htmlFor="photos">Photos</label>
           <input id="photos" name="photos" type="file" accept="image/*" multiple />
-          <p className="note">Up to 25 MB each. Phone photos work as they are.</p>
+          <p className="note">Up to 50 MB each. Phone photos work as they are — pick as many as you like.</p>
         </AdminForm>
       </div>
 

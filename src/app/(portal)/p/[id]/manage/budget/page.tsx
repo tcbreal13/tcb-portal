@@ -72,7 +72,7 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
         {r.payApps.map((p) => (
           <details className="panel" key={p.id} id={`pa-${p.number}`} style={{ marginBottom: 8 }}>
             <summary>#{p.number} · period ending {fdate(p.period_ending)} · {usd(p.amount)} · {p.status}{(docs.get(p.id)?.length ?? 0) > 0 && <span className="pill good" style={{ marginLeft: 8 }}>{docs.get(p.id)!.length} PDF{docs.get(p.id)!.length === 1 ? "" : "s"}</span>}</summary>
-            <AdminForm action={savePA} submit="Save">
+            <AdminForm action={savePA} submit="Save" uploadTo={{ bucket: "documents", prefix: `${id}/payapps/{number}` }}>
               <input type="hidden" name="pa_id" value={p.id} />
               <div className="grid2">
                 <div><label>Number</label><input name="number" type="number" defaultValue={p.number} required /></div>
@@ -107,7 +107,7 @@ export default async function ManageBudget({ params }: { params: Promise<{ id: s
         )}
         <details className="panel" open={r.payApps.length === 0} style={{ marginTop: 12 }}>
           <summary>Add pay application #{nextNo}</summary>
-          <AdminForm action={savePA} submit="Add" reset>
+          <AdminForm action={savePA} submit="Add" reset uploadTo={{ bucket: "documents", prefix: `${id}/payapps/{number}` }}>
             <div className="grid2">
               <div><label>Number</label><input name="number" type="number" defaultValue={nextNo} required /></div>
               <div><label>Period ending</label><input name="period_ending" type="date" required /></div>

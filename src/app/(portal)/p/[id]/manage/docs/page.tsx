@@ -24,7 +24,7 @@ export default async function ManageDocs({ params, searchParams }: { params: Pro
       <div><h1>Documents</h1><p className="sub">Every job has the same five folders. Pick the folder, choose one or more PDFs, upload.</p></div>
       <div className="panel">
         <h2>Upload</h2>
-        <AdminForm action={upload} submit="Upload" reset>
+        <AdminForm action={upload} submit="Upload" reset uploadTo={{ bucket: "documents", prefix: `${id}/files` }}>
           <label htmlFor="category" style={{ marginTop: 0 }}>Folder</label>
           <select id="category" name="category" defaultValue={preset}>{names.map((c) => <option key={c}>{c}</option>)}</select>
           <label htmlFor="file">Files (PDF or images; several at once is fine)</label>

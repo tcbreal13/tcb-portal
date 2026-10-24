@@ -1,5 +1,7 @@
 "use server";
 
+import { uploadedFiles, uploadFailures } from "@/lib/uploads";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireBuilder, num, str, dateOrNull, safeName } from "@/lib/builder";
@@ -87,18 +89,23 @@ export async function postDailyLog(id: string, _p: R, f: FormData): Promise<R> {
   const { data: log, error } = await supabase.from("daily_logs").insert({ project_id: id, log_date, weather: str(f, "weather"), crew: str(f, "crew"), note, created_by: user.id }).select("id").single();
   if (error || !log) return { error: error?.message ?? "Could not save the log." };
 
-  const files = f.getAll("photos").filter((x): x is File => x instanceof File && x.size > 0);
-  const failures: string[] = [];
-  for (const file of files) {
+  const failures: string[] = uploadFailures(f);
+  let posted = 0;
+  for (const u of uploadedFiles(f, "photos", `${id}/`)) {
+    if (!u.type.startsWith("image/")) { failures.push(`${u.name} (not an image)`); continue; }
+    await supabase.from("log_photos").insert({ log_id: log.id, project_id: id, storage_path: u.path, caption: u.name.replace(/\.[^.]+$/, "") });
+    posted++;
+  }
+  for (const file of f.getAll("photos").filter((x): x is File => x instanceof File && x.size > 0)) {
     if (!file.type.startsWith("image/")) { failures.push(`${file.name} (not an image)`); continue; }
-    if (file.size > 25 * 1024 * 1024) { failures.push(`${file.name} (over 25 MB)`); continue; }
     const path = `${id}/${log.id}/${Date.now()}-${safeName(file.name)}`;
     const { error: upErr } = await supabase.storage.from("photos").upload(path, file, { contentType: file.type, upsert: false });
     if (upErr) { failures.push(`${file.name} (${upErr.message})`); continue; }
     await supabase.from("log_photos").insert({ log_id: log.id, project_id: id, storage_path: path, caption: file.name.replace(/\.[^.]+$/, "") });
+    posted++;
   }
   bust(id);
-  return failures.length ? { error: `Log posted, but these photos failed: ${failures.join(", ")}` } : { ok: `Posted with ${files.length} photo${files.length === 1 ? "" : "s"}.` };
+  return failures.length ? { error: `Log posted, but these photos failed: ${failures.join(", ")}` } : { ok: `Posted with ${posted} photo${posted === 1 ? "" : "s"}.` };
 }
 
 /* ---------- Budget and pay apps ---------- */
@@ -120,10 +127,12 @@ export async function savePayApp(id: string, _p: R, f: FormData): Promise<R> {
   // Attached PDFs: invoice, G702/G703, conditional and unconditional waivers. Only replace a slot when a new file is chosen.
   const docs: Record<string, string> = {};
   const failures: string[] = [];
+  failures.push(...uploadFailures(f));
   for (const [col, label, slug] of PAYAPP_DOCS) {
+    const pre = uploadedFiles(f, `doc_${slug}`, `${id}/payapps/`)[0];
+    if (pre) { docs[col] = pre.path; continue; }
     const file = f.get(`doc_${slug}`);
     if (!(file instanceof File) || file.size === 0) continue;
-    if (file.size > 50 * 1024 * 1024) { failures.push(`${label} is over 50 MB`); continue; }
     const path = `${id}/payapps/${row.number}/${slug}-${Date.now()}-${safeName(file.name)}`;
     const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || "application/pdf" });
     if (upErr) { failures.push(`${label}: ${upErr.message}`); continue; }
@@ -228,19 +237,20 @@ export async function reopenSelection(id: string, selId: string) {
 /* ---------- Documents ---------- */
 export async function uploadDocument(id: string, _p: R, f: FormData): Promise<R> {
   const { supabase } = await requireBuilder();
-  const files = f.getAll("file").filter((x): x is File => x instanceof File && x.size > 0);
   const title = str(f, "title");
   const category = normalizeFolder(str(f, "category") || OTHER_FOLDER);
-  if (!files.length) return { error: "Choose at least one file." };
-  const failures: string[] = []; let done = 0;
-  for (const file of files) {
-    if (file.size > 50 * 1024 * 1024) { failures.push(`${file.name} (over 50 MB)`); continue; }
+  const ready = uploadedFiles(f, "file", `${id}/`).filter((u) => !u.path.startsWith(`${id}/payapps/`));
+  const failures: string[] = uploadFailures(f); let done = 0;
+  for (const file of f.getAll("file").filter((x): x is File => x instanceof File && x.size > 0)) {
     const path = `${id}/${Date.now()}-${safeName(file.name)}`;
     const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || "application/octet-stream" });
-    if (upErr) { failures.push(`${file.name} (${upErr.message})`); continue; }
-    const docTitle = files.length === 1 && title ? title : file.name.replace(/\.[^.]+$/, "");
-    const { error } = await supabase.from("documents").insert({ project_id: id, title: docTitle, category, doc_date: dateOrNull(f, "doc_date") ?? todayISO(), storage_path: path });
-    if (error) failures.push(`${file.name} (${error.message})`); else done++;
+    if (upErr) failures.push(`${file.name} (${upErr.message})`); else ready.push({ path, name: file.name, type: file.type, size: file.size });
+  }
+  if (!ready.length && !failures.length) return { error: "Choose at least one file." };
+  for (const u of ready) {
+    const docTitle = ready.length === 1 && title ? title : u.name.replace(/\.[^.]+$/, "");
+    const { error } = await supabase.from("documents").insert({ project_id: id, title: docTitle, category, doc_date: dateOrNull(f, "doc_date") ?? todayISO(), storage_path: u.path });
+    if (error) failures.push(`${u.name} (${error.message})`); else done++;
   }
   bust(id);
   return failures.length ? { error: `${done} uploaded; failed: ${failures.join(", ")}` } : { ok: `${done} file${done === 1 ? "" : "s"} filed under ${category}.` };

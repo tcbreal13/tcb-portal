@@ -1,5 +1,7 @@
 "use server";
 
+import { uploadedFiles, uploadFailures } from "@/lib/uploads";
+
 import { revalidatePath } from "next/cache";
 import { getViewer } from "@/lib/data";
 import { todayISO, signed } from "@/lib/format";
@@ -55,19 +57,21 @@ export async function chooseSelection(projectId: string, selectionId: string, op
 
 /** Client uploads into the "Client uploads" folder of their own job. */
 export async function clientUpload(projectId: string, _prev: { error?: string; ok?: string } | null, formData: FormData): Promise<{ error?: string; ok?: string }> {
-  const files = formData.getAll("file").filter((x): x is File => x instanceof File && x.size > 0);
-  if (!files.length) return { error: "Choose at least one file." };
   const { supabase, user, profile, viewAs } = await getViewer();
   if (viewAs) return PREVIEW;
-  const failures: string[] = []; const titles: string[] = [];
-  for (const file of files) {
-    if (file.size > 50 * 1024 * 1024) { failures.push(`${file.name} (over 50 MB)`); continue; }
+  // Files normally arrive already stored (browser → Storage); small ones posted the old way still work.
+  const done = uploadedFiles(formData, "file", `${projectId}/client-uploads/`);
+  const failures: string[] = uploadFailures(formData); const titles: string[] = [];
+  for (const file of formData.getAll("file").filter((x): x is File => x instanceof File && x.size > 0)) {
     const path = `${projectId}/client-uploads/${Date.now()}-${file.name.replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80)}`;
     const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || "application/octet-stream" });
-    if (upErr) { failures.push(`${file.name} (${upErr.message})`); continue; }
-    const title = file.name.replace(/\.[^.]+$/, "");
-    const { error } = await supabase.from("documents").insert({ project_id: projectId, title, category: CLIENT_FOLDER, doc_date: todayISO(), storage_path: path, uploaded_by: user.id });
-    if (error) failures.push(`${file.name} (${error.message})`); else titles.push(title);
+    if (upErr) failures.push(`${file.name} (${upErr.message})`); else done.push({ path, name: file.name, type: file.type, size: file.size });
+  }
+  if (!done.length && !failures.length) return { error: "Choose at least one file." };
+  for (const u of done) {
+    const title = u.name.replace(/\.[^.]+$/, "");
+    const { error } = await supabase.from("documents").insert({ project_id: projectId, title, category: CLIENT_FOLDER, doc_date: todayISO(), storage_path: u.path, uploaded_by: user.id });
+    if (error) failures.push(`${u.name} (${error.message})`); else titles.push(title);
   }
   revalidatePath(`/p/${projectId}`, "layout");
   if (titles.length) {
