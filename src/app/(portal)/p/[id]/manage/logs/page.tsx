@@ -3,6 +3,7 @@ import { requireBuilder } from "@/lib/builder";
 import { getJobRecord } from "@/lib/data";
 import { fweekday, todayISO } from "@/lib/format";
 import { AdminForm, DeleteButton } from "@/components/AdminForm";
+import { FileDrop } from "@/components/FileDrop";
 import { postDailyLog, addLookahead, deleteRow } from "../actions";
 
 export const metadata = { title: "Post a daily log" };
@@ -30,7 +31,7 @@ export default async function ManageLogs({ params }: { params: Promise<{ id: str
           <label htmlFor="note">What happened</label>
           <textarea id="note" name="note" required placeholder="Set 11 of 34 window units on the south elevation. Roofers finished underlayment on the main ridge…" />
           <label htmlFor="photos">Photos</label>
-          <input id="photos" name="photos" type="file" accept="image/*" multiple />
+          <FileDrop name="photos" accept="image/*" label="Drop photos here, or tap to choose" />
           <p className="note">Up to 50 MB each. Phone photos work as they are — pick as many as you like.</p>
         </AdminForm>
       </div>

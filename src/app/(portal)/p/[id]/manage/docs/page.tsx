@@ -4,31 +4,36 @@ import { getJobRecord } from "@/lib/data";
 import { fdate, todayISO } from "@/lib/format";
 import { AdminForm, DeleteButton } from "@/components/AdminForm";
 import { uploadDocument, deleteRow } from "../actions";
-import { DOC_FOLDERS, OTHER_FOLDER, normalizeFolder } from "@/lib/doc-folders";
+import { OTHER_FOLDER, folderTree, flattenTree, resolveFolder } from "@/lib/doc-folders";
+import { FileDrop } from "@/components/FileDrop";
 
 export const metadata = { title: "Documents" };
 
 export default async function ManageDocs({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ folder?: string }> }) {
-  await requireBuilder();
+  const { supabase } = await requireBuilder();
   const [{ id }, { folder }] = await Promise.all([params, searchParams]);
   const r = await getJobRecord(id);
   if (!r) notFound();
   const upload = uploadDocument.bind(null, id);
-  const names = [...DOC_FOLDERS.map((f) => f.name), OTHER_FOLDER];
-  const preset = folder && names.includes(folder) ? folder : names[0];
+  const { data: folderRows } = await supabase.from("doc_folders").select("path").eq("project_id", id);
+  const custom = (folderRows ?? []).map((f) => f.path);
   const byFolder = new Map<string, typeof r.docs>();
-  for (const d of r.docs) { const f = normalizeFolder(d.category); byFolder.set(f, [...(byFolder.get(f) ?? []), d]); }
+  for (const d of r.docs) { const f = resolveFolder(d.category, custom); byFolder.set(f, [...(byFolder.get(f) ?? []), d]); }
+  const nodes = flattenTree(folderTree(custom, true));
+  const names = nodes.map((n) => n.path);
+  const preset = folder && names.includes(folder) ? folder : names[0];
 
   return (
     <>
-      <div><h1>Documents</h1><p className="sub">Every job has the same five folders. Pick the folder, choose one or more PDFs, upload.</p></div>
+      <div><h1>Documents</h1><p className="sub">Pick the folder, then drop or choose one or more files. You can also drag files straight onto a folder on the job's Documents page.</p></div>
       <div className="panel">
         <h2>Upload</h2>
         <AdminForm action={upload} submit="Upload" reset uploadTo={{ bucket: "documents", prefix: `${id}/files` }}>
           <label htmlFor="category" style={{ marginTop: 0 }}>Folder</label>
-          <select id="category" name="category" defaultValue={preset}>{names.map((c) => <option key={c}>{c}</option>)}</select>
+          <select id="category" name="category" defaultValue={preset}>{nodes.map((n) => <option key={n.path} value={n.path}>{"\u00a0\u00a0".repeat(n.depth)}{n.depth ? "↳ " : ""}{n.name}</option>)}</select>
+          <p className="note" style={{ marginTop: 4 }}>Add folders and subfolders from the job&rsquo;s Documents page (+ New folder / + Subfolder).</p>
           <label htmlFor="file">Files (PDF or images; several at once is fine)</label>
-          <input id="file" name="file" type="file" multiple required />
+          <FileDrop name="file" required />
           <div className="grid2">
             <div><label htmlFor="title">Title (optional — defaults to the file name)</label><input id="title" name="title" type="text" placeholder="Structural observation #3 — shear walls" /></div>
             <div><label htmlFor="doc_date">Date</label><input id="doc_date" name="doc_date" type="date" defaultValue={todayISO()} /></div>
@@ -40,7 +45,7 @@ export default async function ManageDocs({ params, searchParams }: { params: Pro
         if (name === OTHER_FOLDER && docs.length === 0) return null;
         return (
           <div className="panel" key={name}>
-            <h2>{name} <span className="pill idle" style={{ marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>{docs.length}</span></h2>
+            <h2>{name.split(" / ").join(" › ")} <span className="pill idle" style={{ marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>{docs.length}</span></h2>
             <div className="rows">
               {docs.length === 0 && <p className="note" style={{ margin: 0 }}>Empty.</p>}
               {docs.map((d) => (

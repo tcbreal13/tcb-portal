@@ -8,7 +8,7 @@ import { requireBuilder, num, str, dateOrNull, safeName } from "@/lib/builder";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayISO } from "@/lib/format";
 import { PAYAPP_DOCS } from "@/lib/types";
-import { normalizeFolder, OTHER_FOLDER } from "@/lib/doc-folders";
+import { resolveFolder, OTHER_FOLDER } from "@/lib/doc-folders";
 import { typesFromForm } from "@/lib/project-types";
 import { sectionsFromForm, isTier } from "@/lib/access";
 
@@ -238,7 +238,8 @@ export async function reopenSelection(id: string, selId: string) {
 export async function uploadDocument(id: string, _p: R, f: FormData): Promise<R> {
   const { supabase } = await requireBuilder();
   const title = str(f, "title");
-  const category = normalizeFolder(str(f, "category") || OTHER_FOLDER);
+  const { data: custom } = await supabase.from("doc_folders").select("path").eq("project_id", id);
+  const category = resolveFolder(str(f, "category") || OTHER_FOLDER, (custom ?? []).map((c) => c.path));
   const ready = uploadedFiles(f, "file", `${id}/`).filter((u) => !u.path.startsWith(`${id}/payapps/`));
   const failures: string[] = uploadFailures(f); let done = 0;
   for (const file of f.getAll("file").filter((x): x is File => x instanceof File && x.size > 0)) {

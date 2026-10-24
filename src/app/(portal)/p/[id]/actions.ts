@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getViewer } from "@/lib/data";
 import { todayISO, signed } from "@/lib/format";
 import { emailSelectionApproved, emailChangeOrderDecided, emailClientUploaded } from "@/lib/email";
-import { CLIENT_FOLDER } from "@/lib/doc-folders";
+import { CLIENT_FOLDER, isClientPath } from "@/lib/doc-folders";
 
 /** Client (or builder) approves or declines a pending change order. RLS enforces pending → decided only. */
 const PREVIEW: { error?: string; ok?: string } = { error: "You're previewing — nothing is saved. Exit preview to make changes." };
@@ -68,9 +68,13 @@ export async function clientUpload(projectId: string, _prev: { error?: string; o
     if (upErr) failures.push(`${file.name} (${upErr.message})`); else done.push({ path, name: file.name, type: file.type, size: file.size });
   }
   if (!done.length && !failures.length) return { error: "Choose at least one file." };
+  // Clients file into "Client uploads" or one of its subfolders.
+  const wanted = String(formData.get("folder") ?? "");
+  const { data: ownFolder } = wanted && wanted !== CLIENT_FOLDER ? await supabase.from("doc_folders").select("path").eq("project_id", projectId).eq("path", wanted).maybeSingle() : { data: null };
+  const folder = ownFolder && isClientPath(ownFolder.path) ? ownFolder.path : CLIENT_FOLDER;
   for (const u of done) {
     const title = u.name.replace(/\.[^.]+$/, "");
-    const { error } = await supabase.from("documents").insert({ project_id: projectId, title, category: CLIENT_FOLDER, doc_date: todayISO(), storage_path: u.path, uploaded_by: user.id });
+    const { error } = await supabase.from("documents").insert({ project_id: projectId, title, category: folder, doc_date: todayISO(), storage_path: u.path, uploaded_by: user.id });
     if (error) failures.push(`${u.name} (${error.message})`); else titles.push(title);
   }
   revalidatePath(`/p/${projectId}`, "layout");
