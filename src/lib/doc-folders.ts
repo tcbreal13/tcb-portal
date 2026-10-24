@@ -2,6 +2,9 @@
 export const DOC_FOLDERS = [
   { name: "Detailed rebuild budget", blurb: "The current line-item construction budget." },
   { name: "Executed contract – proposal", blurb: "Signed agreement, proposals and addenda." },
+  { name: "Construction Plans", blurb: "Architectural, structural and MEP plan sets and revisions." },
+  { name: "Survey", blurb: "Boundary and topographic surveys." },
+  { name: "Soil Report", blurb: "Geotechnical / soils reports and addenda." },
   { name: "Structural observations", blurb: "Engineer's site observation reports and sign-offs." },
   { name: "Deputy inspections", blurb: "Deputy inspector reports: welding, concrete, masonry, epoxy." },
   { name: "Jobsite pictures and reports", blurb: "Progress photo sets and site reports." },
