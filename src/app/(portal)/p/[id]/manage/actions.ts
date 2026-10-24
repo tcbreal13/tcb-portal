@@ -421,3 +421,20 @@ export async function importSchedule(id: string, _p: R, f: FormData): Promise<R>
   bust(id);
   return { ok: `${rows.length} tasks imported${errors.length ? `; skipped ${errors.length}: ${errors.slice(0, 3).join(" ")}` : "."}` };
 }
+
+/* ---------- Miro boards (shown on the client Selections page) ---------- */
+import { miroBoardId } from "@/lib/miro";
+export async function addBoard(id: string, _p: R, f: FormData): Promise<R> {
+  const { supabase } = await requireBuilder();
+  const boardId = miroBoardId(str(f, "link"));
+  if (!boardId) return { error: "Paste the board's link from Miro (it looks like miro.com/app/board/…)." };
+  const { count } = await supabase.from("project_boards").select("id", { count: "exact", head: true }).eq("project_id", id);
+  const { error } = await supabase.from("project_boards").insert({ project_id: id, section: "selections", title: str(f, "title").slice(0, 120) || "Selections board", board_id: boardId, sort_order: count ?? 0 });
+  bust(id);
+  return error ? { error: error.message } : { ok: "Board added. It now shows on the client's Selections page." };
+}
+export async function removeBoard(id: string, boardRowId: string) {
+  const { supabase } = await requireBuilder();
+  await supabase.from("project_boards").delete().eq("id", boardRowId).eq("project_id", id);
+  bust(id);
+}

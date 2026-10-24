@@ -4,18 +4,23 @@ import { requireSection, getJobRecord, getViewer } from "@/lib/data";
 import { signed, fshort, ftime } from "@/lib/format";
 import { Pill } from "@/components/Pill";
 import { ChooseButton } from "./ChooseButton";
+import { MiroBoards } from "@/components/MiroBoards";
+import Link from "next/link";
 
 export const metadata = { title: "Selections" };
 
 export default async function Selections({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [r, { profile }] = await Promise.all([requireSection(id, "selections"), getViewer()]);
+  const [r, { profile, supabase }] = await Promise.all([requireSection(id, "selections"), getViewer()]);
   if (!r) notFound();
+  const { data: boards } = await supabase.from("project_boards").select("id, title, board_id").eq("project_id", id).eq("section", "selections").order("sort_order");
   const open = r.selections.filter((s) => !s.chosen_option_id), done = r.selections.filter((s) => s.chosen_option_id);
   const list = [...open, ...done];
   return (
     <>
       <div><h1>Selections</h1><p className="sub">Finish choices and the date each one is needed to keep ordering on schedule. Prices are relative to your allowance.</p></div>
+      {profile.role === "builder" && <div className="btns"><Link className="btn ghost sm" href={`/p/${id}/manage/selections#miro`}>+ Add Miro link</Link></div>}
+      <MiroBoards boards={boards ?? []} />
       {list.length === 0 && <div className="panel"><p className="note" style={{ margin: 0 }}>No selections are open right now.</p></div>}
       {list.map((s) => (
         <div className="panel" key={s.id}>
