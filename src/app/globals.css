@@ -163,12 +163,38 @@ details.panel[open] summary{margin-bottom:10px}
 .suggest{border:1px solid var(--accent-ink);background:var(--accent-soft);padding:12px 14px;margin:8px 0}
 .suggest textarea,.suggest select,.suggest input[type=date]{background:var(--bg)}
 
-/* Document folders: drop targets and nested subfolders */
-.dropzone{transition:outline-color .12s, background-color .12s;outline:2px dashed transparent;outline-offset:-2px}
-.dropzone.over{outline-color:var(--accent);background:var(--accent-soft)}
-.subfolder{margin:10px 0 0 14px;padding:10px 0 4px 12px;border-left:2px solid var(--line)}
-.subfolder h3{font:600 15px/1.3 var(--display)}
-.dropnote{margin-top:8px;padding:10px;border:1px dashed var(--accent);font:600 13px var(--body);text-align:center}
+/* Document file browser */
+.fb{background:var(--surface);border:1px solid var(--line);outline:2px dashed transparent;outline-offset:-2px;transition:outline-color .12s}
+.fb.over{outline-color:var(--accent)}
+.fb-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--sunk)}
+.fb-crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:2px;font:600 15px/1.3 var(--display);min-width:0}
+.fb-crumbs a{color:var(--muted);text-decoration:none}.fb-crumbs a:hover{color:var(--ink);text-decoration:underline}
+.fb-crumbs .sep{margin:0 8px;color:var(--muted)}
+.fb-tools{display:flex;gap:8px}
+.fb-status{padding:8px 16px;border-bottom:1px solid var(--line);font-size:13.5px;margin:0}
+.fb-blurb{margin:0;padding:10px 16px 0;font-size:13px;color:var(--muted)}
+.fb-list{display:flex;flex-direction:column;padding:4px 0}
+.fb-row{display:flex;align-items:center;border-top:1px solid var(--line);min-height:48px}
+.fb-row:first-child{border-top:0}
+.fb-row.over{background:var(--accent-soft)}
+.fb-main,.fb-row.up{flex:1;display:flex;align-items:center;gap:12px;padding:10px 16px;color:var(--ink);text-decoration:none;min-width:0}
+.fb-main:hover,.fb-row.up:hover{background:var(--sunk)}
+.fb-ico{flex:none;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+.fb-row.up .fb-ico{font-size:17px}
+.fb-file{position:relative}
+.fb-ext{position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);font:700 7.5px/1 var(--body);letter-spacing:.02em;background:var(--surface);padding:1px 2px;color:var(--ink)}
+.fb-name{flex:1;min-width:0;font-size:15px;line-height:1.35;overflow-wrap:anywhere}
+.fb-sub{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+.fb-row.folder .fb-name{font-weight:600}
+.fb-meta{flex:none;font-size:13px;color:var(--muted);white-space:nowrap}
+.fb-chev{flex:none;color:var(--muted);font-size:20px;line-height:1;margin-left:2px}
+.fb-x{flex:none;background:none;border:0;color:var(--muted);font-size:20px;line-height:1;width:44px;height:44px;cursor:pointer}
+.fb-x:hover{color:var(--crit)}
+.fb-empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px}
+.fb-dropnote{margin:0 16px 12px;padding:12px;border:1px dashed var(--accent);background:var(--accent-soft);text-align:center;font:600 13px var(--body);color:var(--ink)}
+.fb-foot{margin:0;padding:10px 16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.fb-foot:empty{display:none}
+@media (max-width:560px){.fb-meta{display:none}}
 .filedrop{position:relative;border:1px dashed var(--line);padding:14px;text-align:center;color:var(--muted);font-size:14px}
 .filedrop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
 .filedrop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
