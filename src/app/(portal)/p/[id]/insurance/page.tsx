@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireSection, insuranceTotals } from "@/lib/data";
 import { usd, fdate } from "@/lib/format";
 import type { InsuranceLine } from "@/lib/types";
+import { TIER_SECTIONS, tierLabel } from "@/lib/insurance-tiers";
 
 export const metadata = { title: "Insurance budget comparison" };
 
@@ -43,6 +44,9 @@ export default async function Insurance({ params }: { params: Promise<{ id: stri
   const trades = r.insuranceLines.filter((l) => l.section === "trade");
   const addons = r.insuranceLines.filter((l) => l.section === "addon");
   const gaps = r.insuranceLines.filter((l) => l.section === "gap");
+  const tiers = TIER_SECTIONS.map((s) => ({ s, rows: r.insuranceLines.filter((l) => l.section === s) })).filter((x) => x.rows.length);
+  const hasTiers = tiers.length > 0;
+  const tier1 = t.tier.steps.find((x) => x.key === "tier1");
   const meta = [c.carrier && `${c.carrier}`, c.claim_number && `Claim ${c.claim_number}`, c.date_of_loss && `Date of loss ${fdate(c.date_of_loss)}`, c.estimate_date && `Carrier estimate ${fdate(c.estimate_date)}${c.estimate_by ? ` (${c.estimate_by})` : ""}`, c.settlement_date && `Settlement letter ${fdate(c.settlement_date)}`].filter(Boolean).join(" · ");
 
   return (
@@ -60,7 +64,9 @@ export default async function Insurance({ params }: { params: Promise<{ id: stri
       <div className="stats">
         <div className="stat"><span>{c.carrier_label} — replacement cost</span><b>{usd(t.sameScope.carrier)}</b></div>
         <div className="stat"><span>{c.tcb_label} — same scope</span><b>{usd(t.sameScope.tcb)}</b><span>{ratio(t.sameScope.carrier, t.sameScope.tcb)} the carrier figure</span></div>
-        {gaps.length > 0 && <div className="stat"><span>{c.tcb_label} — with scope not carried</span><b>{usd(t.allIn.tcb)}</b><span>+{usd(t.gaps.tcb)} scope adds</span></div>}
+        {hasTiers && tier1 && <div className="stat"><span>{c.tcb_label} — rebuild scope per the toxicology report</span><b>{usd(tier1.running)}</b><span>before code upgrades, fire measures and soft costs</span></div>}
+        {hasTiers && <div className="stat"><span>{c.tcb_label} — full scope</span><b>{usd(t.tier.full)}</b><span>{ratio(t.sameScope.carrier, t.tier.full)} the carrier figure</span></div>}
+        {!hasTiers && gaps.length > 0 && <div className="stat"><span>{c.tcb_label} — with scope not carried</span><b>{usd(t.allIn.tcb)}</b><span>+{usd(t.gaps.tcb)} scope adds</span></div>}
         {t.limits > 0 && <div className="stat"><span>Structure-related policy limits</span><b>{usd(t.limits)}</b><span>{t.allIn.tcb > t.limits ? `TCB figure is ${usd(t.allIn.tcb - t.limits)} over limits` : `${usd(t.limits - t.allIn.tcb)} headroom`}</span></div>}
       </div>
 
@@ -89,6 +95,39 @@ export default async function Insurance({ params }: { params: Promise<{ id: stri
           <Lines rows={gaps} carrierLabel={c.carrier_label} tcbLabel={c.tcb_label} total={t.gaps} totalLabel="Total scope adds" showRatio={false} />
           <table style={{ marginTop: 12 }}>
             <tfoot><tr><td>TCB repair / restoration total</td><td className="r num">{usd(t.allIn.carrier)}</td><td className="r num">{usd(t.allIn.tcb)}</td><td className="r num">{delta(t.allIn.carrier, t.allIn.tcb)}</td><td className="r num">{ratio(t.allIn.carrier, t.allIn.tcb)}</td></tr></tfoot>
+          </table>
+        </div>
+      )}
+
+      {hasTiers && (
+        <div className="panel scroll">
+          <h2>Scope the carrier did not carry</h2>
+          {c.tier_intro.trim() && <p className="note" style={{ marginTop: 0, whiteSpace: "pre-wrap" }}>{c.tier_intro}</p>}
+          {tiers.map(({ s, rows }, i) => (
+            <div key={s} style={{ marginTop: i ? 18 : 0 }}>
+              <h3 style={{ margin: "0 0 6px", fontSize: 14 }}>{i + 1}. {tierLabel(c, s)}</h3>
+              <Lines rows={rows} carrierLabel={c.carrier_label} tcbLabel={c.tcb_label} total={{ carrier: rows.reduce((a, l) => a + Number(l.carrier_amount), 0), tcb: t.tier.tiers[s] }} totalLabel={`Subtotal — tier ${i + 1}${s !== "tier4" ? " (before overhead and fee)" : " (at cost)"}`} showRatio={false} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {hasTiers && (
+        <div className="panel scroll">
+          <h2>Running totals</h2>
+          <p className="note" style={{ marginTop: 0 }}>Each tier is added on top of the previous figure, so the budget can be read at any stopping point.</p>
+          <table>
+            <thead><tr><th>Step</th><th className="r">Added</th><th className="r">Running total</th></tr></thead>
+            <tbody>
+              {t.tier.steps.map((x) => (
+                <tr key={x.key} style={x.emphasis ? { fontWeight: 700 } : undefined}>
+                  <td>{x.label}</td>
+                  <td className="r num">{x.add === null ? "" : (x.add >= 0 ? "+" : "") + usd(x.add)}</td>
+                  <td className="r num">{usd(x.running)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr><td>{c.tcb_label} — full scope</td><td className="r num">{(t.tier.full - t.sameScope.carrier >= 0 ? "+" : "") + usd(t.tier.full - t.sameScope.carrier)} vs. {c.carrier_label.toLowerCase()}</td><td className="r num">{usd(t.tier.full)}</td></tr></tfoot>
           </table>
         </div>
       )}

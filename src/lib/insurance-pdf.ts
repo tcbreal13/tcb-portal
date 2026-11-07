@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type PDFImage } from "pdf-lib";
 import { logoPng, type InsuranceExportInput } from "@/lib/insurance-export";
 import type { InsuranceLine } from "@/lib/types";
+import { TIER_SECTIONS, tierLabel } from "@/lib/insurance-tiers";
 
 /* Brand colours (print on white) */
 const INK = rgb(0.14, 0.14, 0.14), MUTED = rgb(0.42, 0.42, 0.42), LINE = rgb(0.85, 0.85, 0.85), SUNK = rgb(0.945, 0.945, 0.945), YELLOW = rgb(1, 0.89, 0.06);
@@ -90,6 +91,32 @@ export async function buildInsurancePdf({ project, claim, lines, totals }: Insur
   sectionTitle("TOTALS"); colHeader(true);
   row("Replacement cost value - same scope as the carrier", totals.sameScope.carrier, totals.sameScope.tcb, "", { bold: true, fill: true });
   if (totals.gaps.tcb) row("TCB repair / restoration total (with scope not carried)", totals.allIn.carrier, totals.allIn.tcb, "", { bold: true, fill: true });
+
+  const tiers = TIER_SECTIONS.map((s, i) => ({ s, i, rows: lines.filter((l) => l.section === s) })).filter((x) => x.rows.length);
+  if (tiers.length) {
+    sectionTitle("SCOPE THE CARRIER DID NOT CARRY");
+    if (claim.tier_intro.trim()) { const ls = wrap(F, claim.tier_intro, 7.5, W); need(ls.length * 9.5 + 4); ls.forEach((l) => { page.drawText(l, { x: M, y, size: 7.5, font: F, color: MUTED }); y -= 9.5; }); y -= 2; }
+    for (const tsec of tiers) {
+      need(26); y -= 8; page.drawText(clean(`${tsec.i + 1}. ${tierLabel(claim, tsec.s)}`).toUpperCase(), { x: M, y, size: 8.5, font: B, color: INK }); y -= 12;
+      colHeader(false);
+      for (const l of tsec.rows) row(l.category, Number(l.carrier_amount), Number(l.tcb_amount), l.note, { showRatio: false });
+      row(`Subtotal - tier ${tsec.i + 1}${tsec.s === "tier4" ? " (at cost)" : " (before overhead and fee)"}`, tsec.rows.reduce((a, l) => a + Number(l.carrier_amount), 0), totals.tier.tiers[tsec.s], "", { bold: true, fill: true, top: true, showRatio: false });
+      y -= 4;
+    }
+    sectionTitle("RUNNING TOTALS");
+    need(16);
+    page.drawText("STEP", { x: xItem, y, size: 6.5, font: F, color: MUTED }); rightText("ADDED", xTcb, y, 6.5, F, MUTED); rightText("RUNNING TOTAL", xRatio, y, 6.5, F, MUTED);
+    y -= 4; page.drawLine({ start: { x: M, y }, end: { x: PW - M, y }, thickness: 0.8, color: INK }); y -= 10;
+    for (const st of totals.tier.steps) {
+      const font = st.emphasis ? B : F; const ls = wrap(font, st.label, 8, itemW + CW.carrier - 8); const h = ls.length * 10 + 4; need(h);
+      ls.forEach((l, i) => page.drawText(l, { x: xItem, y: y - i * 10, size: 8, font, color: INK }));
+      if (st.add !== null) rightText(signed(st.add), xTcb, y, 8, font); rightText(usd(st.running), xRatio, y, 8, font);
+      y -= h; page.drawLine({ start: { x: M, y: y + 4 }, end: { x: PW - M, y: y + 4 }, thickness: 0.3, color: LINE });
+    }
+    need(16); page.drawRectangle({ x: M, y: y - 7, width: W, height: 14, color: SUNK }); page.drawLine({ start: { x: M, y: y + 7 }, end: { x: PW - M, y: y + 7 }, thickness: 0.6, color: INK });
+    page.drawText(clean(`${claim.tcb_label} - full scope`), { x: xItem, y, size: 8, font: B, color: INK }); rightText(signed(totals.tier.full - totals.sameScope.carrier), xTcb, y, 8, B); rightText(usd(totals.tier.full), xRatio, y, 8, B);
+    y -= 14;
+  }
 
   const bullets = claim.left_out.split("\n").map((l) => l.trim()).filter(Boolean);
   if (bullets.length) {

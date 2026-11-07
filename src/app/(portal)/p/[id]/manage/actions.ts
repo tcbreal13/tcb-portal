@@ -7,7 +7,8 @@ import { redirect } from "next/navigation";
 import { requireBuilder, num, str, dateOrNull, safeName } from "@/lib/builder";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayISO } from "@/lib/format";
-import { PAYAPP_DOCS } from "@/lib/types";
+import { PAYAPP_DOCS, type InsuranceSection } from "@/lib/types";
+import { ALL_SECTIONS } from "@/lib/insurance-tiers";
 import { resolveFolder, OTHER_FOLDER } from "@/lib/doc-folders";
 import { typesFromForm } from "@/lib/project-types";
 import { sectionsFromForm, isTier } from "@/lib/access";
@@ -181,6 +182,8 @@ export async function saveInsuranceClaim(id: string, _p: R, f: FormData): Promis
     estimate_date: dateOrNull(f, "estimate_date"), estimate_by: str(f, "estimate_by"), settlement_date: dateOrNull(f, "settlement_date"),
     carrier_label: str(f, "carrier_label") || "Carrier estimate", tcb_label: str(f, "tcb_label") || "TCB market budget",
     intro: str(f, "intro"), left_out: str(f, "left_out"), notes: str(f, "notes"), limits: moneyLines(f, "limits"), settlement: moneyLines(f, "settlement"), updated_at: new Date().toISOString(),
+    tier_overhead: num(f, "tier_overhead") / 100, tier_fee: num(f, "tier_fee") / 100, tier_intro: str(f, "tier_intro"),
+    tier_labels: Object.fromEntries(["tier1", "tier2", "tier3", "tier4"].map((k) => [k, str(f, `tier_label_${k}`)]).filter(([, v]) => v)),
   };
   const { error } = await supabase.from("insurance_claims").upsert(row, { onConflict: "project_id" });
   bust(id);
@@ -190,7 +193,7 @@ export async function saveInsuranceLine(id: string, _p: R, f: FormData): Promise
   const { supabase } = await requireBuilder();
   const lineId = str(f, "line_id");
   const section = str(f, "section");
-  if (!["trade", "addon", "gap"].includes(section)) return { error: "Pick a section." };
+  if (!ALL_SECTIONS.includes(section as InsuranceSection)) return { error: "Pick a section." };
   const row = { project_id: id, section, category: str(f, "category"), carrier_amount: num(f, "carrier_amount"), tcb_amount: num(f, "tcb_amount"), note: str(f, "note"), sort_order: num(f, "sort_order") };
   if (!row.category) return { error: "A line needs a trade or item name." };
   const { error } = await (lineId ? supabase.from("insurance_lines").update(row).eq("id", lineId) : supabase.from("insurance_lines").insert(row));
@@ -201,7 +204,7 @@ export async function saveInsuranceLine(id: string, _p: R, f: FormData): Promise
 export async function importInsuranceLines(id: string, _p: R, f: FormData): Promise<R> {
   const { supabase } = await requireBuilder();
   const section = str(f, "section");
-  if (!["trade", "addon", "gap"].includes(section)) return { error: "Pick a section." };
+  if (!ALL_SECTIONS.includes(section as InsuranceSection)) return { error: "Pick a section." };
   const money = (v: string) => Number(String(v ?? "").replace(/[^0-9.-]/g, "")) || 0;
   const rows = str(f, "paste").split("\n").map((l) => l.replace(/\r/g, "")).filter((l) => l.trim()).map((l, i) => {
     const cells = l.includes("\t") ? l.split("\t") : l.split(",");

@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 export const VIEW_AS_COOKIE = "tcb_view_as";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { tierSteps } from "@/lib/insurance-tiers";
 import type { JobRecord, Profile, Project, Selection, DailyLog, Message, ScheduleTask, InsuranceClaim, InsuranceLine } from "@/lib/types";
 
 /** Signed-in user plus profile. Redirects to /login when signed out. */
@@ -127,9 +128,10 @@ export function insuranceTotals(r: JobRecord) {
   const addons = { carrier: by("addon", "carrier_amount"), tcb: by("addon", "tcb_amount") };
   const gaps = { carrier: by("gap", "carrier_amount"), tcb: by("gap", "tcb_amount") };
   const sameScope = { carrier: trades.carrier + addons.carrier, tcb: trades.tcb + addons.tcb };
-  const allIn = { carrier: sameScope.carrier + gaps.carrier, tcb: sameScope.tcb + gaps.tcb };
+  const tier = tierSteps(r.insurance, r.insuranceLines, sameScope);
+  const allIn = { carrier: sameScope.carrier + gaps.carrier, tcb: tier.full + gaps.tcb };
   const limits = (r.insurance?.limits ?? []).reduce((t, l) => t + Number(l.amount), 0);
-  return { trades, addons, gaps, sameScope, allIn, limits };
+  return { trades, addons, gaps, sameScope, allIn, limits, tier };
 }
 export function duePayApps(r: JobRecord) { return r.payApps.filter((p) => p.status === "due"); }
 

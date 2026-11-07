@@ -2,11 +2,13 @@ import ExcelJS from "exceljs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { InsuranceClaim, InsuranceLine, Project } from "@/lib/types";
+import { TIER_SECTIONS, tierLabel, type TierStep, type TierSection } from "@/lib/insurance-tiers";
 
 export interface InsuranceExportInput {
   project: Project; claim: InsuranceClaim; lines: InsuranceLine[];
-  totals: { trades: { carrier: number; tcb: number }; addons: { carrier: number; tcb: number }; gaps: { carrier: number; tcb: number }; sameScope: { carrier: number; tcb: number }; allIn: { carrier: number; tcb: number }; limits: number };
+  totals: { trades: { carrier: number; tcb: number }; addons: { carrier: number; tcb: number }; gaps: { carrier: number; tcb: number }; sameScope: { carrier: number; tcb: number }; allIn: { carrier: number; tcb: number }; limits: number; tier: { steps: TierStep[]; tiers: Record<TierSection, number>; markup: number; full: number } };
 }
+const tierSections = (claim: InsuranceClaim, lines: InsuranceLine[]) => TIER_SECTIONS.map((s, i) => ({ s, i, label: `${i + 1}. ${tierLabel(claim, s)}`, rows: lines.filter((l) => l.section === s) })).filter((x) => x.rows.length);
 
 const SECTION_TITLE = { trade: "By trade", addon: "Permits, tax, overhead and profit", gap: "Scope the carrier did not carry" } as const;
 const FOOTER = "TCB Consult LLC / TCB Development Ltd. · CSLB Lic # 1093014 · tim@tcbreal.com · (310) 984-6621 · www.tcbreal.com";
@@ -46,6 +48,18 @@ export function buildInsuranceCsv({ project, claim, lines, totals }: InsuranceEx
   }
   out.push(row("Total", "Replacement cost value — same scope as the carrier", totals.sameScope.carrier.toFixed(2), totals.sameScope.tcb.toFixed(2), (totals.sameScope.tcb - totals.sameScope.carrier).toFixed(2), totals.sameScope.carrier > 0 ? (totals.sameScope.tcb / totals.sameScope.carrier).toFixed(2) : "", ""));
   if (totals.gaps.tcb) out.push(row("Total", "TCB repair / restoration total (with scope not carried)", totals.allIn.carrier.toFixed(2), totals.allIn.tcb.toFixed(2), (totals.allIn.tcb - totals.allIn.carrier).toFixed(2), "", ""));
+  const tiers = tierSections(claim, lines);
+  if (tiers.length) {
+    out.push("", row("Scope the carrier did not carry"));
+    if (claim.tier_intro.trim()) out.push(row("", claim.tier_intro));
+    for (const tsec of tiers) {
+      for (const l of tsec.rows) out.push(row(tsec.label, l.category, Number(l.carrier_amount).toFixed(2), Number(l.tcb_amount).toFixed(2), (Number(l.tcb_amount) - Number(l.carrier_amount)).toFixed(2), "", l.note));
+      out.push(row(tsec.label, `Subtotal — tier ${tsec.i + 1}${tsec.s === "tier4" ? " (at cost)" : " (before overhead and fee)"}`, tsec.rows.reduce((a, l) => a + Number(l.carrier_amount), 0).toFixed(2), totals.tier.tiers[tsec.s].toFixed(2), "", "", ""));
+    }
+    out.push("", row("Running totals", "Step", "Added", "Running total"));
+    for (const st of totals.tier.steps) out.push(row("Running totals", st.label, st.add === null ? "" : st.add.toFixed(2), st.running.toFixed(2)));
+    out.push(row("Running totals", `${claim.tcb_label} — full scope`, (totals.tier.full - totals.sameScope.carrier).toFixed(2), totals.tier.full.toFixed(2)));
+  }
   if (bullets(claim).length) { out.push("", row(`What ${claim.carrier || "the carrier"} left out`)); for (const b of bullets(claim)) out.push(row("", `• ${b}`)); }
   if (claim.limits.length) { out.push("", row("Policy limits (per carrier estimate)")); for (const l of claim.limits) out.push(row("", l.label, Number(l.amount).toFixed(2))); out.push(row("", "Total structure-related limits", totals.limits.toFixed(2))); }
   if (claim.settlement.length) { out.push("", row(`Carrier settlement${claim.settlement_date ? " — " + claim.settlement_date : ""}`)); for (const l of claim.settlement) out.push(row("", l.label, Number(l.amount).toFixed(2))); }
@@ -110,6 +124,28 @@ export async function buildInsuranceXlsx(input: InsuranceExportInput): Promise<B
   line("Replacement cost value — same scope as the carrier", totals.sameScope.carrier, totals.sameScope.tcb, "", { b: true, fill: SUNK });
   if (totals.gaps.tcb) line("TCB repair / restoration total (with scope not carried)", totals.allIn.carrier, totals.allIn.tcb, "", { b: true, fill: SUNK });
   r++;
+  const tiers = tierSections(claim, lines);
+  if (tiers.length) {
+    put(r, 1, "SCOPE THE CARRIER DID NOT CARRY", { b: true, size: 11 }); r++;
+    if (claim.tier_intro.trim()) { ws.mergeCells(r, 1, r, 6); put(r, 1, claim.tier_intro, { wrap: true, size: 9.5, color: MUTED }); ws.getRow(r).height = Math.max(15, Math.ceil(claim.tier_intro.length / 120) * 14); r++; }
+    for (const tsec of tiers) {
+      put(r, 1, tsec.label.toUpperCase(), { b: true, size: 10 }); r++;
+      header();
+      for (const l of tsec.rows) line(l.category, Number(l.carrier_amount), Number(l.tcb_amount), l.note);
+      line(`Subtotal — tier ${tsec.i + 1}${tsec.s === "tier4" ? " (at cost)" : " (before overhead and fee)"}`, tsec.rows.reduce((a, l) => a + Number(l.carrier_amount), 0), totals.tier.tiers[tsec.s], "", { b: true, fill: SUNK, top: true });
+      r++;
+    }
+    put(r, 1, "RUNNING TOTALS", { b: true, size: 11 }); r++;
+    ["Step", "Added", "Running total"].forEach((h, i) => { put(r, i === 0 ? 1 : i + 1, h, { b: true, size: 9, color: MUTED, align: i ? "right" : "left" }); ws.getCell(r, i === 0 ? 1 : i + 1).border = { bottom: { style: "medium", color: { argb: INK } } }; }); r++;
+    for (const st of totals.tier.steps) {
+      put(r, 1, st.label, { b: !!st.emphasis, wrap: true }); if (st.add !== null) put(r, 2, st.add, { fmt: money, b: !!st.emphasis }); put(r, 3, st.running, { fmt: money, b: !!st.emphasis });
+      for (let k = 1; k <= 3; k++) ws.getCell(r, k).border = { bottom: { style: "hair", color: { argb: LINE } } };
+      r++;
+    }
+    put(r, 1, `${claim.tcb_label} — full scope`, { b: true, fill: SUNK }); put(r, 2, totals.tier.full - totals.sameScope.carrier, { fmt: money, b: true, fill: SUNK }); put(r, 3, totals.tier.full, { fmt: money, b: true, fill: SUNK });
+    for (let k = 1; k <= 3; k++) ws.getCell(r, k).border = { top: { style: "thin", color: { argb: INK } } };
+    r += 2;
+  }
   const bl = bullets(claim);
   if (bl.length) {
     put(r, 1, `WHAT ${(claim.carrier || "THE CARRIER").toUpperCase()} LEFT OUT`, { b: true, size: 11 }); r++;

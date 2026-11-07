@@ -38,8 +38,10 @@ export interface MoneyLine { label: string; amount: number }
 export interface InsuranceClaim {
   project_id: string; carrier: string; claim_number: string; date_of_loss: string | null; estimate_date: string | null; estimate_by: string;
   settlement_date: string | null; carrier_label: string; tcb_label: string; intro: string; left_out: string; limits: MoneyLine[]; settlement: MoneyLine[]; notes: string;
+  /** Scope-not-carried tiers: overhead and fee applied to tiers 1–3 (fractions, e.g. 0.10), label overrides per tier, and a note shown above the tiers. */
+  tier_overhead: number; tier_fee: number; tier_labels: Partial<Record<"tier1" | "tier2" | "tier3" | "tier4", string>>; tier_intro: string;
 }
-export type InsuranceSection = "trade" | "addon" | "gap";
+export type InsuranceSection = "trade" | "addon" | "gap" | "tier1" | "tier2" | "tier3" | "tier4";
 export interface InsuranceLine { id: string; section: InsuranceSection; category: string; carrier_amount: number; tcb_amount: number; note: string; sort_order: number }
 
 export interface JobRecord {
