@@ -190,6 +190,8 @@ details.panel[open] summary{margin-bottom:10px}
 .fb-chev{flex:none;color:var(--muted);font-size:20px;line-height:1;margin-left:2px}
 .fb-x{flex:none;background:none;border:0;color:var(--muted);font-size:20px;line-height:1;width:44px;height:44px;cursor:pointer}
 .fb-x:hover{color:var(--crit)}
+.fb-edit{display:inline-flex;align-items:center;justify-content:center}
+.fb-edit:hover{color:var(--accent)}
 .fb-empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px}
 .fb-dropnote{margin:0 16px 12px;padding:12px;border:1px dashed var(--accent);background:var(--accent-soft);text-align:center;font:600 13px var(--body);color:var(--ink)}
 .fb-foot{margin:0;padding:10px 16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}

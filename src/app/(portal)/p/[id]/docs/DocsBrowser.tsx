@@ -7,7 +7,7 @@ import { directUpload, MAX_UPLOAD_MB } from "@/lib/direct-upload";
 import { SEP, isClientPath, type FolderNode } from "@/lib/doc-folders";
 import { clientUpload, removeOwnUpload } from "../actions";
 import { uploadDocument, deleteRow } from "../manage/actions";
-import { createFolder, deleteFolder } from "../folder-actions";
+import { createFolder, deleteFolder, renameFolder } from "../folder-actions";
 
 export interface BrowserDoc { id: string; title: string; date: string; sortDate: string; folder: string; url: string | null; ext: string; mine: boolean }
 type Status = { text: string; bad?: boolean } | null;
@@ -63,6 +63,18 @@ export function DocsBrowser({ projectId, isBuilder, tree, docs, current }: { pro
     setStatus({ text: r.error ?? r.ok ?? "", bad: !!r.error });
     start(() => router.refresh());
   }
+  async function rename(p: string) {
+    const old = p.split(SEP).at(-1) ?? "";
+    const name = prompt(`Rename folder “${old}” to:`, old);
+    if (!name || name.trim() === old) return;
+    const r = await renameFolder(projectId, p, name);
+    setStatus({ text: r.error ?? r.ok ?? "", bad: !!r.error });
+    if (!r.error && current && (current === p || current.startsWith(p + SEP))) {
+      const next = p.split(SEP).slice(0, -1).concat(name.trim()).join(SEP) + current.slice(p.length);
+      router.replace(href(next));
+    }
+    start(() => router.refresh());
+  }
   async function removeFile(d: BrowserDoc) {
     if (!confirm(`Delete “${pretty(d.title)}”? This can't be undone.`)) return;
     if (isBuilder) await deleteRow(projectId, "documents", d.id); else await removeOwnUpload(projectId, d.id);
@@ -84,6 +96,7 @@ export function DocsBrowser({ projectId, isBuilder, tree, docs, current }: { pro
           ))}
         </nav>
         <div className="fb-tools">
+          {isBuilder && node && !node.standard && <button type="button" className="btn ghost sm" onClick={() => rename(node.path)}>Rename</button>}
           {canAdd && <button type="button" className="btn ghost sm" onClick={newFolder}>New folder</button>}
           {canFile(node?.path ?? null) && <>
             <input ref={pick} type="file" multiple hidden onChange={(e) => { upload(node!.path, [...(e.target.files ?? [])]); e.target.value = ""; }} />
@@ -111,6 +124,7 @@ export function DocsBrowser({ projectId, isBuilder, tree, docs, current }: { pro
                 <span className="fb-meta">{n ? `${n} file${n === 1 ? "" : "s"}` : "Empty"}</span>
                 <span className="fb-chev" aria-hidden="true">›</span>
               </Link>
+              {isBuilder && !f.standard && <button type="button" className="fb-x fb-edit" onClick={() => rename(f.path)} aria-label={`Rename folder ${f.name}`} title="Rename folder"><PencilIcon /></button>}
               {removable ? <button type="button" className="fb-x" onClick={() => removeFolder(f.path)} aria-label={`Remove folder ${f.name}`} title="Remove empty folder">×</button> : <span className="fb-x" aria-hidden="true" />}
             </div>
           );
@@ -132,6 +146,9 @@ export function DocsBrowser({ projectId, isBuilder, tree, docs, current }: { pro
   );
 }
 
+function PencilIcon() {
+  return <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>;
+}
 function FolderIcon() {
   return <svg className="fb-ico" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.6l2 2h8.4A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z" fill="var(--accent)" /></svg>;
 }
