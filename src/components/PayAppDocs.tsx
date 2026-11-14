@@ -16,7 +16,7 @@ export function PayAppDocs({ number, links, manageHref }: { number: number; link
   const fileName = (label: string) => `Pay app ${number} - ${label}.pdf`;
   return (
     <>
-      <button type="button" className="btn ghost sm" onClick={() => ref.current?.showModal()}>PDF documents</button>
+      <button type="button" className="btn sm" onClick={() => ref.current?.showModal()}>PDF documents</button>
       <dialog ref={ref} className="docpop" onClick={(e) => { if (e.target === ref.current) ref.current?.close(); }}>
         <div className="docpop-in">
           <div className="row nt" style={{ borderTop: 0 }}>
