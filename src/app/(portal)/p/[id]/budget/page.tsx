@@ -4,6 +4,7 @@ import { requireSection, getJobRecord, getViewer, approvedTotal, billedTotal, re
 import { usd, signed, fdate, sum } from "@/lib/format";
 import { Pill } from "@/components/Pill";
 import { signPayAppDocs } from "@/lib/payapp-docs";
+import { PayAppDocs } from "@/components/PayAppDocs";
 
 export const metadata = { title: "Budget & billing" };
 
@@ -71,11 +72,7 @@ export default async function Budget({ params }: { params: Promise<{ id: string 
                     <td className="r num">{usd(p.amount)}</td>
                     <td>{p.status === "paid" ? <Pill kind="good">Paid{p.status_date ? ` ${fdate(p.status_date, { month: "short", day: "numeric" })}` : ""}</Pill> : <Pill kind="warn">Due{p.status_date ? ` ${fdate(p.status_date, { month: "short", day: "numeric" })}` : ""}</Pill>}</td>
                     <td style={{ paddingLeft: 14 }}>
-                      <div className="btns" style={{ gap: 6 }}>
-                        {links.map((l) => <a key={l.label} className="btn ghost sm" href={l.url} target="_blank" rel="noopener">{l.label} (PDF)</a>)}
-                        {links.length === 0 && !isBuilder && <span className="note" style={{ margin: 0 }}>Not uploaded yet</span>}
-                        {isBuilder && <Link href={`/p/${id}/manage/budget#pa-${p.number}`} className="btn sm">{links.length ? "Edit PDFs" : "Attach PDFs"}</Link>}
-                      </div>
+                      <PayAppDocs number={p.number} links={links} manageHref={isBuilder ? `/p/${id}/manage/budget#pa-${p.number}` : undefined} />
                     </td>
                   </tr>
                 );
